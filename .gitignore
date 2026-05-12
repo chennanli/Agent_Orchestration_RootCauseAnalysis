@@ -235,7 +235,22 @@ simulation_results_*.csv
 # Personal/Internal Documentation and Working Files
 docs/
 RCA_Results/
-RAG/
+# Ignore RAG/ contents EXCEPT the converted-markdown knowledge base, which
+# is public TEP literature (Downs & Vogel 1993, McAvoy 2003) that the
+# agent's search_process_knowledge tool indexes at runtime. Without these
+# files in the repo, a fresh clone or Docker build gives the agent an
+# empty KB — Dockerfile.backend's `COPY RAG/` would also fail outright,
+# as it did on the first v0.3.0 release attempt.
+#
+# Git can't re-include a child of an excluded directory, so we exclude
+# RAG/* (files + immediate subdirs) and then re-include the one subdir
+# we want; that subdir's contents then follow normal rules.
+RAG/*
+!RAG/converted_markdown
+# Explicit re-include — one of the KB files happens to be named
+# `*_REFERENCE*.md`, which is caught by the global `*_REFERENCE*.md`
+# rule further down. Negate it here so the file gets committed.
+!RAG/converted_markdown/2_TEP_Complete_Technical_Reference.md
 image/
 requirements-frozen.txt
 *_backup_*.py
@@ -409,3 +424,9 @@ blog/human_in_loop_governed_wiki_agent_orchestration_draft.html
 !START_TEP_COPILOT.command
 !STOP_TEP_COPILOT.command
 !scripts/smoke_live_copilot.sh
+
+# These knowledge-base files happen to match patterns far up in this file
+# (*_REFERENCE*.md, etc.). Negations must come AFTER the patterns they
+# override — last matching rule wins — so we re-include them here at the
+# very bottom rather than next to the RAG/* exclude.
+!RAG/converted_markdown/2_TEP_Complete_Technical_Reference.md
