@@ -95,6 +95,23 @@ def load_config(file_path):
 try:
     current_dir = os.path.dirname(os.path.abspath(__file__))
     config_path = os.path.join(current_dir, "..", "config", "config.json")
+    # `config/config.json` is .gitignored (it carries API keys). Fresh
+    # clones / CI / Docker builds will be missing it. Fall back to the
+    # tracked template so the backend still boots; the legacy
+    # multi_llm_client paths will report "no providers enabled", but the
+    # new NAT Live Copilot path uses its own config (agent_models.py +
+    # tep_rca_workflow.yml) and works regardless.
+    if not os.path.exists(config_path):
+        template_path = os.path.join(
+            current_dir, "..", "config", "config.template.json"
+        )
+        if os.path.exists(template_path):
+            print(
+                f"⚠️ {config_path} missing; falling back to "
+                f"{template_path}. Copy it to config.json and add your keys "
+                f"if you need the legacy /explain providers."
+            )
+            config_path = template_path
     # Load the configuration
     config = load_config(config_path)
 
