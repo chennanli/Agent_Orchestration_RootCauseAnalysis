@@ -10,6 +10,7 @@ not through here.
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any, Dict, Optional
 
 import httpx
@@ -19,7 +20,12 @@ from pydantic import BaseModel
 logger = logging.getLogger("sim_control")
 router = APIRouter()
 
-UNIFIED_CONSOLE_URL = "http://127.0.0.1:9002"
+# Where the Flask "unified_console" Fortran simulator lives.
+#   - Plain `python backend/app.py` on the laptop: localhost:9002
+#   - docker-compose: http://console:9002 (set via UNIFIED_CONSOLE_URL env)
+UNIFIED_CONSOLE_URL = os.environ.get(
+    "UNIFIED_CONSOLE_URL", "http://127.0.0.1:9002"
+)
 _HTTP_TIMEOUT = httpx.Timeout(5.0, connect=2.0)
 
 

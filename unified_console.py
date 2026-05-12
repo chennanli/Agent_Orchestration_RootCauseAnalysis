@@ -230,10 +230,20 @@ class TEPDataBridge:
 
         return row
 
-    def send_to_ingest(self, data_point, url="http://127.0.0.1:8000/ingest"):
+    def send_to_ingest(self, data_point, url=None):
         """Post a single mapped point to FaultExplainer /ingest and record heartbeat.
         Logs backend response to detect ignored vs aggregating vs accepted events.
+
+        Backend URL resolution:
+          1. Explicit `url` argument (rare; only used by tests)
+          2. BACKEND_INGEST_URL env var (set by docker-compose so the console
+             container reaches the `backend` service by name)
+          3. Localhost fallback for `python unified_console.py` outside Docker
         """
+        if url is None:
+            url = os.environ.get(
+                "BACKEND_INGEST_URL", "http://127.0.0.1:8000/ingest"
+            )
         start = time.time()
         try:
             mapped = self.map_to_faultexplainer_features(data_point)

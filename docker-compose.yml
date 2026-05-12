@@ -1,120 +1,117 @@
-# ==============================================================================
-# TEP Demo - Docker Compose Configuration
-# ==============================================================================
-# Purpose: Orchestrate all TEP system services
-# Architecture: Monolithic backend + Frontend + Unified Console
-# Usage: docker-compose up -d
-# ==============================================================================
-
-version: '3.8'
+# =============================================================================
+# TEP Live Copilot — one-command Docker setup
+# =============================================================================
+#
+# Quick start:
+#   1. Put your API key in a local .env file in this same folder:
+#        echo "GEMINI_API_KEY=your_key_here" > .env
+#      (or NVIDIA_API_KEY if you prefer NIM — both have free tiers).
+#   2. docker compose up
+#   3. Open http://localhost:5173/  →  full Live Copilot UI
+#
+# Two modes are supported off the same file:
+#
+#   A.  `docker compose up`        — builds locally from the Dockerfiles
+#                                    in this repo. Useful while developing.
+#   B.  `docker compose pull && docker compose up`
+#                                  — fetches the pre-built images we publish
+#                                    to GHCR on every `v*` git tag. Faster,
+#                                    no local toolchain needed.
+#
+# Switch which tagged release `pull` fetches by setting COMPOSE_IMAGE_TAG
+# (default `latest`) in .env:
+#     COMPOSE_IMAGE_TAG=v0.3.0
+#
+# Architecture:
+#
+#     browser ──→ frontend:80 (nginx)  ──/api/*──→  backend:8000 (FastAPI + NAT)
+#                    │                                  ↑
+#                    │                                  │  /ingest
+#                    │ SPA, static                      │
+#                                              console:9002 (Flask + Fortran sim)
+#                                                       ↑
+#                                              React UI drives IDV / speed via
+#                                              backend's /api/sim/* → console
+# =============================================================================
 
 services:
-  # ============================================================================
-  # Backend API - FastAPI with TEP Simulation, LLM, RAG
-  # ============================================================================
+  # ---- 1. FastAPI backend + NAT agentic RCA -------------------------------
   backend:
+    image: ghcr.io/chennanli/agent_orchestration_rootcauseanalysis/backend:${COMPOSE_IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: Dockerfile.backend
     container_name: tep-backend
+    environment:
+      # Both keys are optional — the backend boots without them. The model
+      # selector dropdown in the UI lets the user paste their own key, too.
+      - NVIDIA_API_KEY=${NVIDIA_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      # backend/sim_control.py reads this to find the Fortran simulator.
+      - UNIFIED_CONSOLE_URL=http://console:9002
+      - PYTHONUNBUFFERED=1
     ports:
       - "8000:8000"
-    env_file:
-      - .env
-    environment:
-      # Override LMStudio URL for Docker networking
-      - LMSTUDIO_URL=${LMSTUDIO_URL:-http://host.docker.internal:1234}
-      - PYTHONUNBUFFERED=1
-    volumes:
-      # Persistent data volumes
-      - ./data:/app/data
-      - ./RCA_Results:/app/RCA_Results
-      - ./backend/diagnostics:/app/backend/diagnostics
-      - ./backend/LLM_RCA_Results:/app/backend/LLM_RCA_Results
-      - ./backend/logs:/app/backend/logs
-      # RAG knowledge base
-      - ./RAG/converted_markdown:/app/RAG/converted_markdown
     networks:
       - tep-network
-    restart: unless-stopped
-    extra_hosts:
-      # Enable access to host machine (for LMStudio on host)
-      - "host.docker.internal:host-gateway"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/"]
       interval: 30s
       timeout: 10s
-      retries: 3
       start_period: 40s
-
-  # ============================================================================
-  # Frontend - React + Vite (Production Build)
-  # ============================================================================
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: tep-frontend
-    ports:
-      - "5173:80"
-    environment:
-      - VITE_API_URL=http://localhost:8000
-    depends_on:
-      backend:
-        condition: service_healthy
-    networks:
-      - tep-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
-      interval: 30s
-      timeout: 3s
       retries: 3
-      start_period: 10s
+    restart: unless-stopped
+    # Mount diagnostics so saved NAT runs survive `docker compose down`.
+    # Comment out for a fully ephemeral run.
+    volumes:
+      - ./backend/diagnostics:/app/backend/diagnostics
 
-  # ============================================================================
-  # Unified Console - Flask Control Panel
-  # ============================================================================
-  unified-console:
+  # ---- 2. Flask "unified_console" that drives the Fortran simulation -----
+  console:
+    image: ghcr.io/chennanli/agent_orchestration_rootcauseanalysis/console:${COMPOSE_IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: Dockerfile.console
     container_name: tep-console
+    environment:
+      # Where to POST live sensor data. The console can't reach the host's
+      # `127.0.0.1` — it must call the `backend` service by name, which
+      # Docker's internal DNS resolves automatically.
+      - BACKEND_INGEST_URL=http://backend:8000/ingest
+      - PYTHONUNBUFFERED=1
     ports:
+      # Exposed for direct debugging; the React UI talks to backend, not
+      # this. Comment out for a tighter setup.
       - "9002:9002"
-    env_file:
-      - .env
-    volumes:
-      - ./data:/app/data
-      - ./templates:/app/templates
-      - ./static:/app/static
+    networks:
+      - tep-network
+    restart: unless-stopped
+
+  # ---- 3. React frontend served by nginx ----------------------------------
+  frontend:
+    image: ghcr.io/chennanli/agent_orchestration_rootcauseanalysis/frontend:${COMPOSE_IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: tep-frontend
+    ports:
+      # Container's nginx listens on 80; publish it on 5173 to match the
+      # dev-mode Vite port the README has always referenced.
+      - "5173:80"
     depends_on:
       backend:
         condition: service_healthy
     networks:
       - tep-network
-    restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9002/"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
       interval: 30s
-      timeout: 10s
+      timeout: 3s
+      start_period: 10s
       retries: 3
-      start_period: 20s
+    restart: unless-stopped
 
-# ==============================================================================
-# Networks
-# ==============================================================================
 networks:
   tep-network:
     driver: bridge
     name: tep-network
-
-# ==============================================================================
-# Volumes (Optional: Use named volumes for better management)
-# ==============================================================================
-# Uncomment if you want Docker-managed volumes instead of bind mounts
-# volumes:
-#   tep-data:
-#   tep-results:
-#   tep-diagnostics:
-

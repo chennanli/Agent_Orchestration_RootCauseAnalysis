@@ -1,38 +1,37 @@
 # Continuous Deployment for TEP Agent Orchestration / Root-Cause Analysis.
 #
 # When you push a git tag matching `v*` (e.g., `git tag v0.3.0 && git push
-# --tags`), this workflow builds the backend Docker image and pushes it to
-# GitHub Container Registry under the repo's own namespace:
+# --tags`), this workflow builds THREE Docker images — backend, frontend,
+# console — and pushes them to GitHub Container Registry under the repo's
+# own namespace:
 #
-#     ghcr.io/chennanli/agent_orchestration_rootcauseanalysis:v0.3.0
-#     ghcr.io/chennanli/agent_orchestration_rootcauseanalysis:latest
+#     ghcr.io/chennanli/agent_orchestration_rootcauseanalysis/backend:v0.3.0
+#     ghcr.io/chennanli/agent_orchestration_rootcauseanalysis/frontend:v0.3.0
+#     ghcr.io/chennanli/agent_orchestration_rootcauseanalysis/console:v0.3.0
 #
-# Anyone (or any production server) can then `docker pull` that image
-# directly — no rebuild needed, no "works on my machine" risk. That's the
-# CD half of CI/CD: CI proved the code is good, CD ships an artifact.
+# Anyone (or any production server) can then `docker compose pull` against
+# the docker-compose.yml in this repo and get a fully reproducible deploy
+# — no local build needed, no "works on my machine" risk.
 #
 # Why GHCR (not Docker Hub):
-#   - Free and unlimited for public repos
-#   - Authenticated automatically via the GITHUB_TOKEN — no extra secrets
-#   - Lives next to the repo on github.com, so anyone reading the source
-#     can `docker pull` immediately
+#   - Free + unlimited for public repos
+#   - Authenticated automatically via the workflow's GITHUB_TOKEN
+#   - Lives next to the source — anyone reading the code sees the images
 #
 # Why tag-driven (not every push):
 #   - You don't want EVERY commit on main to produce a new image — that's
-#     noise. Tags are explicit human acts ("ship this version") and
-#     line up with semver releases.
+#     noise. Tags are explicit ("ship this version") and align with semver.
 #   - CI already runs on every push for verification. CD runs only when
 #     you decide a commit is worth a version number.
 name: Release
 
 on:
   push:
-    # Triggers on any tag starting with v: v0.3.0, v1.0.0-rc1, v2.0.0, etc.
+    # Triggers on any v-prefixed tag: v0.3.0, v1.0.0-rc1, v2.0.0, etc.
     # Won't trigger on regular branch pushes or PRs.
     tags: ["v*"]
-  # Allow manual triggering from the Actions tab — handy when you want
-  # to re-ship a tag after fixing the Dockerfile, without bumping
-  # the version number.
+  # Manual trigger from the Actions tab — handy when you want to re-ship
+  # a tag after fixing a Dockerfile, without bumping the version.
   workflow_dispatch:
     inputs:
       tag:
@@ -47,33 +46,49 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-push-backend:
-    name: Build & push backend image
+  build-and-push:
+    name: Build & push ${{ matrix.component }} image
     runs-on: ubuntu-latest
     # GHCR needs explicit write permission on the workflow — by default
-    # GITHUB_TOKEN can only read packages. This stanza opts in.
+    # GITHUB_TOKEN can only read packages.
     permissions:
       contents: read
       packages: write
+
+    # Three components, three parallel jobs. Each one is independent and
+    # cacheable on its own — a frontend-only change won't invalidate the
+    # backend cache.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - component: backend
+            dockerfile: Dockerfile.backend
+            context: .
+          - component: console
+            dockerfile: Dockerfile.console
+            context: .
+          - component: frontend
+            dockerfile: frontend/Dockerfile
+            context: .
 
     steps:
       - uses: actions/checkout@v4
 
       # QEMU lets us cross-compile for non-amd64 architectures
-      # (e.g., arm64 for Apple Silicon servers, Graviton). Even if you
-      # only target amd64 today, having QEMU set up means the next time
-      # you add `linux/arm64` to platforms below, nothing else changes.
+      # (e.g., arm64 for Apple Silicon, Graviton). Even if today we only
+      # target amd64, having QEMU set up means the next time we add
+      # linux/arm64 to platforms below, nothing else changes.
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
-      # buildx is Docker's modern builder — it caches layers, supports
-      # multi-platform images, and (crucially) is what docker/build-push-action
-      # uses under the hood.
+      # buildx = Docker's modern builder. Caches layers, supports multi-
+      # platform images, and is what docker/build-push-action uses.
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       # Log into GHCR using the workflow's own short-lived token. Nothing
-      # to configure in repo settings — the token is provisioned per-run.
+      # to configure in repo settings — token is provisioned per-run.
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
@@ -81,18 +96,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Compute the image name once and reuse it. GitHub forces the
-      # registry path to lowercase, so we lowercase the repo name here
-      # (repo is `Agent_Orchestration_RootCauseAnalysis` — uppercase
-      # letters would make `docker push` fail).
+      # Compute the image name + version once.
       - name: Compute image name
         id: image
         run: |
           REPO_LC=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          echo "name=ghcr.io/${REPO_LC}/backend" >> "$GITHUB_OUTPUT"
-          # Resolve the version tag — from a `git tag` push it's
-          # github.ref_name (e.g., "v0.3.0"); from a manual run it's
-          # the user-supplied input.
+          echo "name=ghcr.io/${REPO_LC}/${{ matrix.component }}" >> "$GITHUB_OUTPUT"
+          # Resolve the version: tag push → github.ref_name; manual run → input.
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             VERSION="${{ github.event.inputs.tag }}"
           else
@@ -100,11 +110,11 @@ jobs:
           fi
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
-      - name: Build & push backend image
+      - name: Build & push ${{ matrix.component }} image
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: Dockerfile.backend
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
           push: true
           # Two tags on the same image:
           #   :v0.3.0  → immutable, what you reference in production
@@ -112,22 +122,19 @@ jobs:
           tags: |
             ${{ steps.image.outputs.name }}:${{ steps.image.outputs.version }}
             ${{ steps.image.outputs.name }}:latest
-          # Reuse layer cache across runs — turns a 5-minute build into
-          # 30 seconds when only the application code changed.
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          # Build for x86_64 only for now. To also build arm64, add
+          # Reuse layer cache across runs — turns a 5-min build into 30 sec
+          # when only the application code changed. `scope` keeps each
+          # component's cache separate so they don't trash each other.
+          cache-from: type=gha,scope=${{ matrix.component }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.component }}
+          # Build for x86_64 only for now. To also build arm64 add
           # `linux/arm64` here — QEMU is already set up above.
           platforms: linux/amd64
           # Provenance attestations are useful but take extra time and
-          # currently fail on some private registries; turn off until
-          # you know you need them.
+          # occasionally fail on some registries; off until we need them.
           provenance: false
 
       - name: Summarize
         run: |
-          echo "::notice title=Image published::${{ steps.image.outputs.name }}:${{ steps.image.outputs.version }}"
-          echo ""
-          echo "Pull with:"
+          echo "::notice title=Published::${{ steps.image.outputs.name }}:${{ steps.image.outputs.version }}"
           echo "  docker pull ${{ steps.image.outputs.name }}:${{ steps.image.outputs.version }}"
-          echo "  docker pull ${{ steps.image.outputs.name }}:latest"

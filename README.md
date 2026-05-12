@@ -2,7 +2,9 @@
 
 > Live Fortran simulation of the Tennessee Eastman Process · NVIDIA NeMo Agent Toolkit (NAT) agentic root-cause analysis · industrial-copilot UI that streams the agent's reasoning step by step · advisory only, human review required.
 
-![status: portfolio demo](https://img.shields.io/badge/status-portfolio%20demo-blue) ![python](https://img.shields.io/badge/python-3.13-blue) ![nat](https://img.shields.io/badge/nvidia--nat-1.6.0-76b900) ![ui](https://img.shields.io/badge/ui-React%20%2B%20Mantine%20%2B%20SSE-violet) ![safety](https://img.shields.io/badge/safety-advisory%20only-orange)
+[![CI](https://github.com/chennanli/Agent_Orchestration_RootCauseAnalysis/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/chennanli/Agent_Orchestration_RootCauseAnalysis/actions/workflows/ci.yml)
+[![Release](https://github.com/chennanli/Agent_Orchestration_RootCauseAnalysis/actions/workflows/release.yml/badge.svg)](https://github.com/chennanli/Agent_Orchestration_RootCauseAnalysis/actions/workflows/release.yml)
+![status: portfolio demo](https://img.shields.io/badge/status-portfolio%20demo-blue) ![python](https://img.shields.io/badge/python-3.12%2B-blue) ![nat](https://img.shields.io/badge/nvidia--nat-1.6.0-76b900) ![ui](https://img.shields.io/badge/ui-React%20%2B%20Mantine%20%2B%20SSE-violet) ![docker](https://img.shields.io/badge/docker-compose-2496ed) ![safety](https://img.shields.io/badge/safety-advisory%20only-orange)
 
 **Repository:** [github.com/chennanli/Agent_Orchestration_RootCauseAnalysis](https://github.com/chennanli/Agent_Orchestration_RootCauseAnalysis)
 
@@ -159,6 +161,52 @@ The component tree is in [`frontend/src/`](frontend/src/) — page, 8 components
 ---
 
 ## Run it
+
+### Quick start with Docker (recommended for first-time users)
+
+Cross-platform, no Python/Node/Fortran toolchain needed. Runs the same images that get built and published on every release.
+
+```bash
+# 1. Clone
+git clone https://github.com/chennanli/Agent_Orchestration_RootCauseAnalysis.git
+cd Agent_Orchestration_RootCauseAnalysis
+
+# 2. Put your API key in .env (NVIDIA NIM is free, Gemini is free; either works)
+echo "NVIDIA_API_KEY=your_key_here" > .env
+#   (or)
+echo "GEMINI_API_KEY=your_key_here" > .env
+
+# 3. Pull the pre-built images and run
+docker compose pull
+docker compose up
+```
+
+Open <http://localhost:5173/> — full Live Copilot UI, ready to take a `Diagnose Now` click.
+
+To stop everything: `docker compose down`. To rebuild from source instead of pulling: `docker compose up --build`.
+
+#### Get an API key (free)
+
+| Provider | Tier | Sign-up |
+|---|---|---|
+| **NVIDIA NIM** | Free for personal use, includes Llama 3.3 70B / 3.1 8B / Mixtral 8x22B | <https://build.nvidia.com/> → Get API Key |
+| **Google Gemini** | Free tier, includes Gemini 2.5 Flash & Pro | <https://aistudio.google.com/app/apikey> |
+
+You can also paste your key directly into the **Model** dropdown in the UI — it stays in your browser's `localStorage` and never touches the server.
+
+#### Published images
+
+Built by [`.github/workflows/release.yml`](.github/workflows/release.yml) on every `v*` git tag, pushed to GHCR:
+
+```text
+ghcr.io/chennanli/agent_orchestration_rootcauseanalysis/backend:<tag>
+ghcr.io/chennanli/agent_orchestration_rootcauseanalysis/console:<tag>
+ghcr.io/chennanli/agent_orchestration_rootcauseanalysis/frontend:<tag>
+```
+
+Set `COMPOSE_IMAGE_TAG=v0.3.0` in `.env` to pin to a specific release; otherwise `:latest` follows main.
+
+---
 
 ### Easiest — one click on macOS
 

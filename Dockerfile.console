@@ -1,43 +1,60 @@
 # ==============================================================================
-# TEP Unified Console Dockerfile
+# TEP Unified Console (Fortran simulator) Dockerfile
 # ==============================================================================
-# Purpose: Flask-based control panel for TEP system
-# Architecture: Simple Flask app with templates
+# Purpose: Flask app that owns the Tennessee-Eastman Fortran simulation and
+# pushes data points to the FastAPI backend's /ingest endpoint. Exposes the
+# IDV / setpoint / speed control routes that backend/sim_control.py proxies to.
+#
+# Build from REPO_ROOT:
+#   docker build -t tep-console -f Dockerfile.console .
+#
+# Env vars (defaulted here, overridden by docker-compose):
+#   BACKEND_INGEST_URL=http://backend:8000/ingest
 # ==============================================================================
 
 FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install system dependencies
+# Runtime deps for the precompiled Linux Fortran extension. libgfortran5
+# provides the shared library temain_mod.cpython-36m-x86_64-linux-gnu.so
+# was linked against; curl is only for the healthcheck.
 RUN apt-get update && apt-get install -y \
+    libgfortran5 \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# unified_console.py needs only a tiny subset of the project deps. Listing
+# them explicitly keeps the image around ~150 MB instead of pulling the
+# kitchen-sink requirements.txt (~1.5 GB).
+RUN pip install --no-cache-dir \
+    "flask>=3.0" \
+    "flask-cors>=4.0" \
+    "numpy>=1.26" \
+    "pandas>=2.0" \
+    "requests>=2.28" \
+    "psutil>=5.9"
 
-# Copy application files
-COPY unified_console.py .
+# Bring in the entry point + assets.
+COPY unified_console.py ./
 COPY templates/ ./templates/
 COPY static/ ./static/
-COPY config/ ./config/
 
-# Create necessary directories
+# The Fortran wrapper. unified_console adds `backend/simulation/` to sys.path
+# and `import tep2py`; we replicate that layout inside the image so the
+# import works without further configuration.
+COPY backend/simulation/ ./backend/simulation/
+
+# Persistent run-time directories (data dumps, CSV snapshots).
 RUN mkdir -p /app/data
 
-# Set environment variables
-ENV PYTHONUNBUFFERED=1
-ENV FLASK_APP=unified_console.py
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
+    BACKEND_INGEST_URL=http://backend:8000/ingest
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
     CMD curl -f http://localhost:9002/ || exit 1
 
-# Expose port
 EXPOSE 9002
 
-# Run Flask application
 CMD ["python", "unified_console.py"]
-
