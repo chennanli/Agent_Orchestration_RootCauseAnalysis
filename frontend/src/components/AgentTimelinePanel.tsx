@@ -19,6 +19,7 @@ import DiagnoseButton from "./DiagnoseButton";
 import TraceStep from "./TraceStep";
 import FollowupChat from "./FollowupChat";
 import ModelSelector from "./ModelSelector";
+import BakeoffCard from "./BakeoffCard";
 import { AgentStreamState } from "../hooks/useAgentStream";
 import { AnomalyState } from "../api/agent";
 
@@ -191,6 +192,23 @@ export default function AgentTimelinePanel({
             <FollowupChat
               runId={stream.runId}
               initialFollowups={stream.final.followups ?? []}
+              modelId={modelId}
+              apiKey={apiKey}
+            />
+          )}
+
+          {/*
+            Bake-off card: on-demand "naive LLM vs NAT agent" side-by-side
+            comparison. This is the highest-impact way to demonstrate WHY
+            agent orchestration matters — same model, same snapshot, with
+            and without tools. We render it after the final advisory so
+            the user reads the agent's answer first, then sees the gap.
+          */}
+          {stream.runId && (
+            <BakeoffCard
+              runId={stream.runId}
+              modelId={modelId}
+              apiKey={apiKey}
             />
           )}
         </>

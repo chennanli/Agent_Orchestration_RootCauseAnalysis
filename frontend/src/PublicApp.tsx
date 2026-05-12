@@ -12,6 +12,7 @@ import {
   IconLayoutDashboard,
   IconBook2,
   IconBolt,
+  IconBriefcase,
   IconClipboardCheck,
 } from "@tabler/icons-react";
 import { Outlet, NavLink as RouterNavLink, useLocation } from "react-router-dom";
@@ -25,6 +26,11 @@ const NAV = [
   { to: "/", label: "Live Copilot", icon: IconBolt, end: true },
   { to: "/wiki", label: "LLM Wiki", icon: IconBook2 },
   { to: "/eval", label: "Evaluation", icon: IconClipboardCheck },
+  // Misc tab bundles utilities lifted out of the old demo: per-run
+  // export-as-Markdown, share-by-email, operator notes scratchpad, KB
+  // upload. Kept off the canvas to avoid distracting from the diagnosis
+  // flow, but reachable in one click.
+  { to: "/misc", label: "Misc", icon: IconBriefcase },
   // /overview, /live, /agent are intentionally NOT in the sidebar — they're
   // older entry points that confuse first-time visitors. Routes still
   // resolve by URL for engineers / link-sharing.

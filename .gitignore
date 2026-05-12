@@ -397,6 +397,9 @@ backend/evaluation/results/
 frontend/dist/
 frontend/.vite/
 
+# Local blog drafts for human / Claude iteration.
+blog/human_in_loop_governed_wiki_agent_orchestration_draft.html
+
 # Tmp log files left by START_TEP_COPILOT.command
 /tmp/tep_*.log
 
@@ -406,4 +409,3 @@ frontend/.vite/
 !START_TEP_COPILOT.command
 !STOP_TEP_COPILOT.command
 !scripts/smoke_live_copilot.sh
-

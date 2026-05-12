@@ -17,17 +17,12 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /build
 
-# Copy Fortran source files
+# Copy Fortran wrapper Python files. We DO NOT attempt to rebuild Fortran
+# inside Docker — the .so binary is precompiled per host architecture and
+# shipped in backend/simulation/. The `RUN if [ -f "*.f90" ]` line that
+# used to be here tested the literal string "*.f90" (no glob expansion in
+# `[ -f ... ]`) and would always be false, so the rebuild never ran.
 COPY backend/simulation/*.py ./simulation/
-# Note: If you have .f90 files, copy them here
-# COPY backend/simulation/*.f90 ./simulation/
-
-# Attempt to rebuild Fortran modules for Linux
-# If this fails, we'll fall back to copying existing .so files
-WORKDIR /build/simulation
-RUN if [ -f "*.f90" ]; then \
-        f2py -c -m temain_mod *.f90 || echo "Fortran build failed, will use existing .so"; \
-    fi
 
 # ==============================================================================
 # Stage 2: Production runtime
@@ -46,15 +41,23 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
+# Copy application code. Both `RAG/` and `knowledge_base/` are needed:
+#   - `RAG/converted_markdown/*.md` is what the agent's `search_process_knowledge`
+#     tool actually reads (the keyword index). EnhancedKnowledgeManager defaults
+#     to this path when no path is passed in.
+#   - `knowledge_base/` holds the original PDFs/DOCX (source-of-truth) plus
+#     anything users have uploaded via /rag/upload_build for re-conversion.
 COPY backend/ ./backend/
 COPY config/ ./config/
 COPY RAG/ ./RAG/
+COPY knowledge_base/ ./knowledge_base/
 
-# Copy Fortran modules (either newly built or existing)
-COPY --from=fortran-builder /build/simulation/*.so ./backend/simulation/ 2>/dev/null || true
-# Fallback: Copy existing .so files if Fortran build failed
-COPY backend/simulation/*.so ./backend/simulation/ 2>/dev/null || true
+# Copy the prebuilt Fortran .so files. The old form
+#   COPY backend/simulation/*.so ./backend/simulation/ 2>/dev/null || true
+# is INVALID — Dockerfile COPY does not honour shell redirection or `||`.
+# Linux NIM/TEP support requires the linux-gnu .so to be present in the repo;
+# we still ship it (`temain_mod.cpython-36m-x86_64-linux-gnu.so`).
+COPY backend/simulation/temain_mod.cpython-36m-x86_64-linux-gnu.so ./backend/simulation/
 
 # Create necessary directories
 RUN mkdir -p \

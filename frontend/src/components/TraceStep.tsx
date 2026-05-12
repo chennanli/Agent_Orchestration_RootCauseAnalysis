@@ -33,6 +33,17 @@ export default function TraceStep({ step, index }: Props) {
   const data = p.data || {};
   const [open, setOpen] = useState(false);
 
+  // IMPORTANT: hooks must run in the same order every render — keep this
+  // useMemo ABOVE any early return below. (Previously placed after the
+  // WORKFLOW_START/END short-circuit, which made it conditional and
+  // tripped react-hooks/rules-of-hooks.) For knowledge-search results,
+  // surface the cited source documents as clickable chips that deep-link
+  // into the wiki page.
+  const sourceChips = useMemo(
+    () => extractSourceDocs(name, data.output),
+    [name, data.output],
+  );
+
   const palette: Record<string, { color: string; icon: string; label: string }> = {
     WORKFLOW_START: { color: "gray", icon: "▸", label: "workflow start" },
     WORKFLOW_END: { color: "gray", icon: "■", label: "workflow end" },
@@ -55,13 +66,6 @@ export default function TraceStep({ step, index }: Props) {
   const inputPreview = previewJSON(data.input);
   const outputPreview = previewJSON(data.output);
   const oneLine = (s: string) => (s.length > 200 ? s.slice(0, 200) + "…" : s);
-
-  // For knowledge-search results, surface the cited source documents as
-  // clickable chips that deep-link into the wiki page.
-  const sourceChips = useMemo(
-    () => extractSourceDocs(name, data.output),
-    [name, data.output],
-  );
 
   return (
     <Box

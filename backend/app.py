@@ -1,3 +1,20 @@
+# --- sys.path bootstrap (must run before any local imports) ---
+# Support two startup paths:
+#   * `python backend/app.py` (one-click launcher) — `backend/` is already
+#     the CWD-ish entry, but uvicorn's reload picks the file as a script.
+#   * `uvicorn backend.app:app` (Docker, ASGI servers, package import)
+# In the second mode, sibling files like `prompts.py` aren't on sys.path,
+# which used to crash with `ModuleNotFoundError: No module named 'prompts'`.
+# Adding both the repo root and `backend/` itself before any local imports
+# makes both modes work without changing every import line.
+import sys
+import os
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_REPO_ROOT = os.path.dirname(_HERE)
+for _p in (_REPO_ROOT, _HERE):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
 # imports
 from openai import OpenAI
 from fastapi import FastAPI, HTTPException, UploadFile, File
@@ -25,10 +42,6 @@ from independent_llm_manager import IndependentLLMSystem
 from ai_agent_service import AIAgentKnowledgeService, enhance_analysis_with_ai_agent
 from enhanced_md_saver import enhanced_md_saver, save_analysis_to_md
 from knowledge_manager import EnhancedKnowledgeManager
-
-import sys
-import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Load and validate configuration
 def load_config(file_path):
@@ -505,6 +518,16 @@ try:
 except Exception as _exc:  # noqa: BLE001
     logger.warning(f"⚠️ Sim control router not mounted: {_exc}")
 
+# Misc tab endpoints: per-run export-as-markdown, email-report, operator
+# notes, KB upload. Lives under /api/misc/* so the new shell is decoupled
+# from the legacy /rag/* endpoints.
+try:
+    from backend.misc_router import router as misc_router
+    app.include_router(misc_router)
+    logger.info("✅ Mounted misc router")
+except Exception as _exc:  # noqa: BLE001
+    logger.warning(f"⚠️ Misc router not mounted: {_exc}")
+
 
 # Define request and response models
 class MessageRequest(BaseModel):
@@ -731,6 +754,14 @@ async def ingest_live_point(req: IngestRequest):
 
                     # 🔧 FIX: Run LLM analysis in background to avoid blocking /stream endpoint
                     import asyncio
+                    # Pre-compute timestamps so background_llm_analysis and the
+                    # outer ingest scope share the same "time of trigger" values.
+                    # (Codex P0-2 bug: `now` was referenced but never defined,
+                    # crashing /ingest whenever the LLM trigger branch fired.)
+                    import time as _t
+                    now_ts = _t.time()
+                    now_iso = datetime.now().isoformat()
+
                     async def background_llm_analysis():
                         import time
                         analysis_start_time = time.time()
@@ -798,7 +829,7 @@ async def ingest_live_point(req: IngestRequest):
                             _last_analysis_result = formatted
 
                             # build a snapshot with an id for persistence
-                            snap = {"id": int(time.time()*1000), "time": now, **formatted}
+                            snap = {"id": int(time.time()*1000), "time": now_iso, **formatted}
                             _analysis_history.append(snap)
                             # persist to JSONL
                             try:
@@ -860,7 +891,7 @@ async def ingest_live_point(req: IngestRequest):
 
                     result["llm"] = {"status": "triggered", "top_features": top_features}
                     _consecutive_anomalies = 0
-                    _last_llm_trigger_time = now
+                    _last_llm_trigger_time = now_ts
                     _last_llm_top_features = top_features
         else:
             result["llm"] = {"status": "not_triggered"}

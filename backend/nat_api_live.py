@@ -31,7 +31,12 @@ from pydantic import BaseModel
 
 from backend.agent_tools.live_snapshot import snapshot_live_buffer
 from backend.nat_runner import RUNS_DIR, run_nat_streaming, NAT_WORKFLOW_FILE
-from backend.agent_models import list_models, make_workflow_yaml, DEFAULT_MODEL_ID
+from backend.agent_models import (
+    list_models,
+    make_workflow_yaml,
+    get_model,
+    DEFAULT_MODEL_ID,
+)
 
 logger = logging.getLogger("nat_api_live")
 router = APIRouter()
@@ -315,33 +320,70 @@ def get_run(run_id: str) -> Dict[str, Any]:
 
 class FollowupRequest(BaseModel):
     question: str
+    # Optional overrides. If omitted, the model selection from the original
+    # run JSON (`run["model_id"]`) is used. The api_key is a BYOK fallback
+    # for users running without a server-side env var (e.g. Gemini key pasted
+    # in the UI). It is NOT persisted into the run JSON.
+    model_id: Optional[str] = None
+    api_key: Optional[str] = None
 
 
-_followup_client = None  # OpenAI client singleton, lazily constructed
+# Cache of (model_id, masked_key) → OpenAI client. Keyed on a hash of the
+# resolved API key so a per-request BYOK key still gets its own client.
+# Cleared automatically if the process restarts.
+_followup_clients: Dict[str, Any] = {}
 
 
-def _get_followup_client():
-    """Return a cached OpenAI client pointed at the NIM endpoint.
+def _resolve_followup_provider(
+    model_id: str, user_api_key: Optional[str]
+) -> Dict[str, Any]:
+    """Resolve the OpenAI-compatible {base_url, model_name, api_key} for a
+    follow-up call.
 
-    Constructed lazily on first use so module import does not require
-    `NVIDIA_API_KEY` to be set.
+    Mirrors what `make_workflow_yaml()` does for the agent run, so a
+    follow-up against a Gemini-routed run goes to Gemini (not NIM) and a
+    follow-up against a NIM run respects NVIDIA_API_KEY.
     """
-    global _followup_client
-    if _followup_client is not None:
-        return _followup_client
-    from openai import OpenAI  # type: ignore
-
-    base = os.environ.get(
-        "NVIDIA_NIM_BASE", "https://integrate.api.nvidia.com/v1"
-    )
-    api_key = os.environ.get("NVIDIA_API_KEY")
+    model = get_model(model_id)
+    block = model["yaml"]
+    name = block["model_name"]
+    if block.get("_type") == "openai":
+        base = block.get("base_url") or "https://api.openai.com/v1"
+    else:
+        # NIM: NAT's nim plugin uses the OpenAI-compatible NIM proxy.
+        base = os.environ.get(
+            "NVIDIA_NIM_BASE", "https://integrate.api.nvidia.com/v1"
+        )
+    api_key = user_api_key or os.environ.get(model["api_key_env"])
     if not api_key:
         raise HTTPException(
             status_code=500,
-            detail="NVIDIA_API_KEY not set; follow-up cannot reach the LLM",
+            detail=(
+                f"{model['api_key_env']} not set; follow-up against "
+                f"{model['provider']} cannot reach the LLM. Either set the "
+                f"env var on the server or paste an API key in the UI."
+            ),
         )
-    _followup_client = OpenAI(base_url=base, api_key=api_key)
-    return _followup_client
+    return {"base": base, "model_name": name, "api_key": api_key}
+
+
+def _get_followup_client(model_id: str, user_api_key: Optional[str]):
+    """Return a per-(model, key) cached OpenAI client.
+
+    The cache key includes a fingerprint of the API key so a UI-pasted BYOK
+    key gets its own client (and revocation by the user invalidates the
+    cached entry on next process restart).
+    """
+    provider = _resolve_followup_provider(model_id, user_api_key)
+    cache_key = f"{model_id}::{hash(provider['api_key'])}"
+    cached = _followup_clients.get(cache_key)
+    if cached is not None:
+        return cached, provider["model_name"]
+    from openai import OpenAI  # type: ignore
+
+    client = OpenAI(base_url=provider["base"], api_key=provider["api_key"])
+    _followup_clients[cache_key] = client
+    return client, provider["model_name"]
 
 
 def _summarise_trace(run: Dict[str, Any], max_steps: int = 8) -> str:
@@ -370,7 +412,14 @@ def followup(run_id: str, req: FollowupRequest) -> Dict[str, Any]:
         raise HTTPException(status_code=404, detail=f"run not found: {run_id}")
     run = json.loads(f.read_text())
 
-    client = _get_followup_client()
+    # Resolve the model & key for THIS follow-up. Priority:
+    #   1. Explicit override in the request body (req.model_id / req.api_key)
+    #   2. The model_id saved into the run JSON at diagnose() time
+    #   3. The library default
+    # This means a follow-up against a Gemini-routed run hits Gemini, not
+    # Llama; and a BYOK key pasted in the UI works without env vars.
+    chosen_model_id = req.model_id or run.get("model_id") or DEFAULT_MODEL_ID
+    client, model_name = _get_followup_client(chosen_model_id, req.api_key)
 
     sys_prompt = (
         "You are an industrial process diagnosis assistant. Answer ONLY based "
@@ -389,21 +438,212 @@ def followup(run_id: str, req: FollowupRequest) -> Dict[str, Any]:
         f"New question: {req.question}"
     )
 
-    completion = client.chat.completions.create(
-        model="meta/llama-3.3-70b-instruct",
-        messages=[
-            {"role": "system", "content": sys_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
-        temperature=0.0,
-        max_tokens=512,
-    )
+    try:
+        completion = client.chat.completions.create(
+            model=model_name,
+            messages=[
+                {"role": "system", "content": sys_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.0,
+            max_tokens=512,
+        )
+    except Exception as exc:  # noqa: BLE001
+        # Surface a 502 so the UI shows a clean error instead of a 500
+        # stack-trace page; the message includes provider context.
+        raise HTTPException(
+            status_code=502,
+            detail=f"followup LLM call failed ({chosen_model_id}): {exc}",
+        ) from exc
     answer = completion.choices[0].message.content or ""
 
-    entry = {"q": req.question, "a": answer, "ts": _utc_now_iso()}
+    entry = {
+        "q": req.question,
+        "a": answer,
+        "ts": _utc_now_iso(),
+        "model_id": chosen_model_id,
+    }
     run.setdefault("followups", []).append(entry)
     f.write_text(json.dumps(run, indent=2, default=str), encoding="utf-8")
     return entry
+
+
+# -----------------------------------------------------------------------------
+# Bake-off (T9) — naive single-shot LLM call on the same snapshot
+# -----------------------------------------------------------------------------
+#
+# Industry-standard way to demonstrate why agent orchestration matters: run
+# the SAME question against the SAME LLM on the SAME snapshot, with NO tools
+# and NO ReAct loop, and show both answers side-by-side. The bare LLM
+# typically returns a vague "may be a cooling-related deviation"; the NAT
+# agent returns "XMV_6 (Purge valve) saturated at 87%, see Downs & Vogel
+# §5.4". The gap is the value of orchestration.
+
+
+class BakeoffRequest(BaseModel):
+    """Request body for the bake-off endpoint.
+
+    Optional model/api_key overrides so the side-by-side can be run against
+    a different model than the original run — useful when the user wants
+    to test "would a stronger model not need tools?" hypothesis.
+    """
+
+    model_id: Optional[str] = None
+    api_key: Optional[str] = None
+
+
+def _format_snapshot_for_naive(fault_id: str, points: int = 50) -> str:
+    """Render a compact text view of a saved snapshot CSV for the naive LLM.
+
+    Includes the latest `points` rows and the column names. We do NOT
+    include the anomaly score or the tool-curated top-6 features — those
+    are tool outputs and would defeat the bake-off.
+
+    Uses the existing `_resolve_csv_path` from anomaly_tools so this works
+    identically for seeded faults (frontend/public/faultN.csv) and live
+    snapshots (backend/diagnostics/snapshots/live_*.csv).
+    """
+    from backend.agent_tools.anomaly_tools import _resolve_csv_path
+
+    try:
+        csv_path = _resolve_csv_path(fault_id)
+    except Exception as exc:  # noqa: BLE001
+        return f"(could not resolve snapshot for {fault_id!r}: {exc})"
+    if not csv_path.exists():
+        return f"(snapshot {fault_id}.csv not on disk at {csv_path})"
+    try:
+        import pandas as pd
+
+        df = pd.read_csv(csv_path)
+    except Exception as exc:  # noqa: BLE001
+        return f"(could not read snapshot: {exc})"
+    # Strip the tool-output columns (t2_stat, t2_*, anomaly) — the naive
+    # LLM is supposed to reason about raw sensors only. Leaving these in
+    # would be giving it the PCA detector's answer for free.
+    drop_cols = [c for c in df.columns if c.startswith("t2_") or c == "anomaly"]
+    df = df.drop(columns=drop_cols, errors="ignore")
+    tail = df.tail(points)
+    head_cols = ", ".join(df.columns.tolist())
+    body = tail.to_csv(index=False)
+    if len(body) > 6000:
+        body = body[:6000] + "\n... (truncated)"
+    return f"columns:\n{head_cols}\n\nlast {len(tail)} rows:\n{body}"
+
+
+@router.post("/api/agent/runs/{run_id}/bakeoff")
+def bakeoff(run_id: str, req: BakeoffRequest = BakeoffRequest()) -> Dict[str, Any]:
+    """Run the naive single-shot LLM on the same snapshot for comparison.
+
+    Returns the bare-model response plus a few orchestration metrics that
+    the UI can render alongside the agent's answer:
+      - tool_count_agent: how many tools the agent called
+      - sources_agent: cited source documents
+      - specificity scores (count of XMV_X / XMEAS_Y tag mentions)
+    """
+    import re as _re
+    import time as _time
+
+    _must_be_safe_id("run_id", run_id)
+    f = RUNS_DIR / f"{run_id}.json"
+    if not f.exists():
+        raise HTTPException(status_code=404, detail=f"run not found: {run_id}")
+    run = json.loads(f.read_text())
+
+    chosen_model_id = req.model_id or run.get("model_id") or DEFAULT_MODEL_ID
+    client, model_name = _get_followup_client(chosen_model_id, req.api_key)
+
+    fault_id = run.get("fault_id") or ""
+    question = run.get("question") or (
+        "Diagnose the current TEP anomaly and recommend operator review steps."
+    )
+    snapshot_text = _format_snapshot_for_naive(fault_id)
+
+    sys_prompt = (
+        "You are an industrial process diagnosis assistant. You are given a "
+        "raw window of TEP sensor data. Answer the operator's question using "
+        "ONLY this snapshot. You do not have access to any tools, knowledge "
+        "base, or prior diagnoses — reason from the numbers alone. Stay "
+        "advisory-only: do not propose changing setpoints or starting/stopping "
+        "equipment."
+    )
+    user_prompt = (
+        f"Fault id: {fault_id}\n\n"
+        f"Snapshot:\n{snapshot_text}\n\n"
+        f"Question: {question}"
+    )
+
+    started = _time.time()
+    try:
+        completion = client.chat.completions.create(
+            model=model_name,
+            messages=[
+                {"role": "system", "content": sys_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.0,
+            max_tokens=512,
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=502,
+            detail=f"bakeoff LLM call failed ({chosen_model_id}): {exc}",
+        ) from exc
+    runtime = _time.time() - started
+    naive_text = completion.choices[0].message.content or ""
+
+    # Specificity heuristic: how many concrete XMV_X / XMEAS_Y tags did
+    # each answer reference? Tools force the agent to name specific tags
+    # because rank_contributing_variables returns them by name. A naive
+    # LLM often hedges with "the cooling subsystem" — fewer tag mentions.
+    tag_re = _re.compile(r"\bXM(EAS|V)[ _\-]?\d+\b", _re.IGNORECASE)
+    agent_text = (run.get("final_answer") or {}).get("text", "") or ""
+    naive_tags = set(m.group(0).upper().replace(" ", "_").replace("-", "_")
+                     for m in tag_re.finditer(naive_text))
+    agent_tags = set(m.group(0).upper().replace(" ", "_").replace("-", "_")
+                     for m in tag_re.finditer(agent_text))
+
+    # Agent metrics derived from the saved tool_trace.
+    trace = run.get("tool_trace") or []
+    tool_calls = [
+        (s.get("payload") or {}).get("name")
+        for s in trace
+        if (s.get("payload") or {}).get("event_type") == "FUNCTION_END"
+    ]
+    sources: List[str] = []
+    for step in trace:
+        p = step.get("payload") or {}
+        if p.get("event_type") != "FUNCTION_END":
+            continue
+        out = (p.get("data") or {}).get("output")
+        if not isinstance(out, dict):
+            continue
+        items = out.get("excerpts") or out.get("matches") or []
+        if not isinstance(items, list):
+            continue
+        for it in items:
+            src = (it or {}).get("source_document")
+            if isinstance(src, str) and src and src not in sources:
+                sources.append(src)
+
+    return {
+        "naive": {
+            "text": naive_text,
+            "model_id": chosen_model_id,
+            "runtime_seconds": round(runtime, 2),
+            "tag_count": len(naive_tags),
+            "tags": sorted(naive_tags),
+        },
+        "agent": {
+            "text": agent_text,
+            "model_id": run.get("model_id"),
+            "runtime_seconds": run.get("runtime_seconds"),
+            "tool_count": len(tool_calls),
+            "tool_calls": tool_calls,
+            "sources_cited": sources,
+            "tag_count": len(agent_tags),
+            "tags": sorted(agent_tags),
+        },
+    }
 
 
 # -----------------------------------------------------------------------------

@@ -62,6 +62,10 @@ export interface FollowupEntry {
   q: string;
   a: string;
   ts: string;
+  // Recorded by the backend so the UI can show which provider answered.
+  // Older runs (created before the model_id was persisted on follow-ups)
+  // will not have this field.
+  model_id?: string;
 }
 
 export interface AgentRun {
@@ -186,12 +190,59 @@ export function getRun(runId: string): Promise<AgentRun> {
   return jget(`/api/agent/runs/${encodeURIComponent(runId)}`);
 }
 
+export interface FollowupOptions {
+  // If provided, overrides the model recorded on the original run. Lets the
+  // user switch follow-up provider mid-conversation without restarting.
+  model_id?: string | null;
+  // BYOK passthrough. Sent only over the local proxy → 127.0.0.1:8000.
+  api_key?: string | null;
+}
+
 export function followup(
   runId: string,
   question: string,
+  opts: FollowupOptions = {},
 ): Promise<FollowupEntry> {
   return jpost(`/api/agent/runs/${encodeURIComponent(runId)}/followup`, {
     question,
+    model_id: opts.model_id ?? null,
+    api_key: opts.api_key ?? null,
+  });
+}
+
+// ---- bake-off (naive LLM vs NAT agent) ----
+
+export interface BakeoffNaive {
+  text: string;
+  model_id: string;
+  runtime_seconds: number;
+  tag_count: number;
+  tags: string[];
+}
+
+export interface BakeoffAgent {
+  text: string;
+  model_id: string | null;
+  runtime_seconds: number | null;
+  tool_count: number;
+  tool_calls: string[];
+  sources_cited: string[];
+  tag_count: number;
+  tags: string[];
+}
+
+export interface BakeoffResult {
+  naive: BakeoffNaive;
+  agent: BakeoffAgent;
+}
+
+export function bakeoff(
+  runId: string,
+  opts: { model_id?: string | null; api_key?: string | null } = {},
+): Promise<BakeoffResult> {
+  return jpost(`/api/agent/runs/${encodeURIComponent(runId)}/bakeoff`, {
+    model_id: opts.model_id ?? null,
+    api_key: opts.api_key ?? null,
   });
 }
 
@@ -214,4 +265,59 @@ export function triggerFault(
   magnitude = 1.0,
 ): Promise<unknown> {
   return jpost("/api/sim/fault", { idv, magnitude });
+}
+
+// ---- /api/misc/* (Misc tab) ----
+
+export interface NotesPayload {
+  text: string;
+  updated_at: string | null;
+}
+
+export function getNotes(): Promise<NotesPayload> {
+  return jget("/api/misc/notes");
+}
+
+export function saveNotes(text: string): Promise<NotesPayload> {
+  return jpost("/api/misc/notes", { text });
+}
+
+export interface EmailRunResult {
+  sent: boolean;
+  reason?: string;
+  report_path?: string;
+}
+
+export function emailRun(
+  runId: string,
+  recipient: string,
+  subject?: string,
+): Promise<EmailRunResult> {
+  return jpost(`/api/misc/runs/${encodeURIComponent(runId)}/email`, {
+    recipient,
+    subject: subject ?? null,
+  });
+}
+
+export function exportRunMarkdownUrl(runId: string): string {
+  // Returns a URL the browser can open in a new tab to trigger a download.
+  // We do NOT fetch the body here because the browser handles the
+  // Content-Disposition header more cleanly than a JS-driven download.
+  return `/api/misc/runs/${encodeURIComponent(runId)}/markdown`;
+}
+
+export interface KbUploadResult {
+  saved: string[];
+  kb_dir: string;
+  hint: string;
+}
+
+export async function uploadKbFiles(files: File[]): Promise<KbUploadResult> {
+  const fd = new FormData();
+  for (const f of files) fd.append("files", f, f.name);
+  const r = await fetch("/api/misc/kb/upload", { method: "POST", body: fd });
+  if (!r.ok) {
+    throw new Error(`/api/misc/kb/upload -> ${r.status} ${await r.text().catch(() => "")}`);
+  }
+  return (await r.json()) as KbUploadResult;
 }

@@ -15,18 +15,29 @@ import { FollowupEntry, followup } from "../api/agent";
 interface Props {
   runId: string;
   initialFollowups?: FollowupEntry[];
+  // Pass the model + key currently selected in the right-hand panel so
+  // follow-ups respect the same provider that ran the diagnosis. Without
+  // these, a Gemini-routed run's follow-ups would silently fall back to
+  // whatever model the run JSON happens to record (or DEFAULT_MODEL_ID).
+  modelId?: string | null;
+  apiKey?: string | null;
 }
 
 /**
  * Single-shot follow-up chat against a saved NAT run.
  *
- * Each post sends `{question}` to `POST /api/agent/runs/{id}/followup`; the
- * backend assembles a prompt out of the original trace and snapshot, calls
- * the NIM LLM once (not a ReAct loop), and appends `{q, a, ts}` to the
- * persisted run JSON. So follow-ups are cheap and survive page reloads
- * because they live inside the same run file.
+ * Each post sends `{question, model_id, api_key}` to
+ * `POST /api/agent/runs/{id}/followup`; the backend assembles a prompt out
+ * of the original trace and snapshot, calls the chosen LLM once (not a
+ * ReAct loop), and appends `{q, a, ts, model_id}` to the persisted run
+ * JSON. So follow-ups are cheap and survive page reloads.
  */
-export default function FollowupChat({ runId, initialFollowups = [] }: Props) {
+export default function FollowupChat({
+  runId,
+  initialFollowups = [],
+  modelId = null,
+  apiKey = null,
+}: Props) {
   const [history, setHistory] = useState<FollowupEntry[]>(initialFollowups);
   const [question, setQuestion] = useState("");
   const [sending, setSending] = useState(false);
@@ -38,7 +49,10 @@ export default function FollowupChat({ runId, initialFollowups = [] }: Props) {
     setSending(true);
     setError(null);
     try {
-      const entry = await followup(runId, q);
+      const entry = await followup(runId, q, {
+        model_id: modelId,
+        api_key: apiKey,
+      });
       setHistory((h) => [...h, entry]);
       setQuestion("");
     } catch (e) {
