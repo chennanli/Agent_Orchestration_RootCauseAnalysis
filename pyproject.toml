@@ -27,6 +27,16 @@ dependencies = [
     "google-generativeai>=0.5",
     "matplotlib>=3.8",
     "plotly>=5.20",
+    # The next three are technically transitive in a "with NAT" install
+    # (huggingface_hub / langchain pull them in), but the slim install
+    # path — `pip install .` without `[nat]` — needs them as first-class
+    # deps so backend/app.py imports succeed on CI:
+    #   - pyyaml  : backend/agent_models.make_workflow_yaml
+    #   - requests: backend/multi_llm_client.py + a couple of /rag/* handlers
+    #   - httpx   : fastapi.testclient + backend/ai_agent_service.py
+    "pyyaml>=6.0",
+    "requests>=2.28",
+    "httpx>=0.27",
 ]
 
 [project.optional-dependencies]
