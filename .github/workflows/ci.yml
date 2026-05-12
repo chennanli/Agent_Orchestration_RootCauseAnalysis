@@ -1,0 +1,111 @@
+# Continuous Integration for TEP Agent Orchestration / Root-Cause Analysis.
+#
+# Runs on every push and every PR against main. Two parallel jobs:
+#
+#   backend  — installs the Python project (no NAT extra; NAT pulls heavy
+#              NVIDIA SDKs and needs a key, neither of which CI has) and
+#              runs the smoke tests in backend/tests/.
+#
+#   frontend — installs node deps from package-lock.json (npm ci, not
+#              install — fails fast if the lockfile is out of sync),
+#              runs eslint, then runs `npm run build` which is `tsc &&
+#              vite build` so we also get a type-check.
+#
+# CI is intentionally light: no NAT runtime, no LLM calls, no Docker
+# build. These would require GPU drivers / API keys / minutes of time
+# for ~zero added confidence on a PR. If you want a heavier nightly
+# build (Docker image, end-to-end NAT run on a seeded fault), add a
+# separate workflow on a schedule.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # Allow re-running from the Actions tab when CI is flaky.
+  workflow_dispatch:
+
+# Cancel in-progress runs of the same ref — saves CI minutes when you
+# push twice in quick succession.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Project declares requires-python = ">=3.11,<3.14". Test the
+        # newest supported version; bump when you bump the floor.
+        python-version: ["3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          # Re-use pip's wheel cache across runs — saves ~60s on warm
+          # builds because pandas / numpy / scipy don't have to recompile.
+          cache-dependency-path: |
+            pyproject.toml
+            requirements.txt
+
+      - name: Install backend deps
+        run: |
+          python -m pip install --upgrade pip
+          # `.[dev]` brings in ruff + pytest + pytest-asyncio on top of the
+          # runtime deps in pyproject. We intentionally DO NOT add `[nat]`
+          # — the NAT extra requires nvidia-nat[langchain] which is large
+          # and needs an NVIDIA_API_KEY at import-time for some paths.
+          pip install -e ".[dev]"
+
+      - name: Smoke tests
+        run: pytest backend/tests -q
+
+  frontend:
+    name: Frontend (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ["20"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          # Cache the npm download cache keyed on the lockfile so warm
+          # runs reuse the resolved tarballs.
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend deps
+        # `npm ci` (clean-install) is strict: it errors out if
+        # package-lock.json is out of sync with package.json, instead of
+        # silently regenerating it like `npm install` would. That's what
+        # we want in CI.
+        run: npm ci
+
+      - name: Lint
+        # `npm run lint` is now `eslint . --ext ts,tsx
+        # --report-unused-disable-directives` (no --max-warnings 0) so
+        # the 62 legacy `any`/unused-import warnings don't break the
+        # script. Real ESLint errors (e.g. react-hooks rules-of-hooks)
+        # still fail the job.
+        run: npm run lint
+
+      - name: Build
+        # `npm run build` is `tsc && vite build`. So this step also acts
+        # as our TypeScript type-check: any new type error breaks CI.
+        run: npm run build
