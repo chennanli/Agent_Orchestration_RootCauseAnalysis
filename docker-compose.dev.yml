@@ -1,0 +1,101 @@
+# ==============================================================================
+# TEP Demo - Docker Compose (Development Mode)
+# ==============================================================================
+# Purpose: Development environment with hot-reload and debugging
+# Usage: docker-compose -f docker-compose.dev.yml up
+# ==============================================================================
+
+version: '3.8'
+
+services:
+  # ============================================================================
+  # Backend API - Development Mode (Hot Reload)
+  # ============================================================================
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: tep-backend-dev
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - LMSTUDIO_URL=${LMSTUDIO_URL:-http://host.docker.internal:1234}
+      - PYTHONUNBUFFERED=1
+      - RELOAD=true  # Enable auto-reload
+    volumes:
+      # Mount source code for hot reload
+      - ./backend:/app/backend
+      - ./config:/app/config
+      - ./RAG:/app/RAG
+      # Persistent data
+      - ./data:/app/data
+      - ./RCA_Results:/app/RCA_Results
+      - ./backend/diagnostics:/app/backend/diagnostics
+      - ./backend/LLM_RCA_Results:/app/backend/LLM_RCA_Results
+    networks:
+      - tep-network
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: ["uvicorn", "backend.app:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+  # ============================================================================
+  # Frontend - Development Mode (Vite Dev Server)
+  # ============================================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: tep-frontend-dev
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    volumes:
+      # Mount source code for hot reload
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - ./frontend/index.html:/app/index.html
+      - ./frontend/vite.config.ts:/app/vite.config.ts
+      - ./frontend/tsconfig.json:/app/tsconfig.json
+    depends_on:
+      - backend
+    networks:
+      - tep-network
+    restart: unless-stopped
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+
+  # ============================================================================
+  # Unified Console - Development Mode
+  # ============================================================================
+  unified-console:
+    build:
+      context: .
+      dockerfile: Dockerfile.console
+    container_name: tep-console-dev
+    ports:
+      - "9002:9002"
+    env_file:
+      - .env
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+    volumes:
+      # Mount source code for hot reload
+      - ./unified_console.py:/app/unified_console.py
+      - ./templates:/app/templates
+      - ./static:/app/static
+      - ./data:/app/data
+    depends_on:
+      - backend
+    networks:
+      - tep-network
+    restart: unless-stopped
+
+networks:
+  tep-network:
+    driver: bridge
+    name: tep-network-dev
+

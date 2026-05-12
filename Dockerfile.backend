@@ -1,0 +1,80 @@
+# ==============================================================================
+# TEP Backend Dockerfile
+# ==============================================================================
+# Purpose: FastAPI backend with embedded TEP simulation (Fortran), LLM clients, RAG
+# Architecture: Monolithic (matches current design)
+# Platform: Linux (rebuilds Fortran modules from source)
+# ==============================================================================
+
+# Stage 1: Build Fortran modules
+FROM python:3.12-slim AS fortran-builder
+
+# Install Fortran compiler and build tools
+RUN apt-get update && apt-get install -y \
+    gfortran \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+
+# Copy Fortran source files
+COPY backend/simulation/*.py ./simulation/
+# Note: If you have .f90 files, copy them here
+# COPY backend/simulation/*.f90 ./simulation/
+
+# Attempt to rebuild Fortran modules for Linux
+# If this fails, we'll fall back to copying existing .so files
+WORKDIR /build/simulation
+RUN if [ -f "*.f90" ]; then \
+        f2py -c -m temain_mod *.f90 || echo "Fortran build failed, will use existing .so"; \
+    fi
+
+# ==============================================================================
+# Stage 2: Production runtime
+# ==============================================================================
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install runtime dependencies for compiled modules
+RUN apt-get update && apt-get install -y \
+    libgfortran5 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY backend/ ./backend/
+COPY config/ ./config/
+COPY RAG/ ./RAG/
+
+# Copy Fortran modules (either newly built or existing)
+COPY --from=fortran-builder /build/simulation/*.so ./backend/simulation/ 2>/dev/null || true
+# Fallback: Copy existing .so files if Fortran build failed
+COPY backend/simulation/*.so ./backend/simulation/ 2>/dev/null || true
+
+# Create necessary directories
+RUN mkdir -p \
+    /app/data \
+    /app/RCA_Results \
+    /app/backend/diagnostics \
+    /app/backend/LLM_RCA_Results \
+    /app/backend/logs
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8000/ || exit 1
+
+# Expose port
+EXPOSE 8000
+
+# Run FastAPI with uvicorn
+CMD ["uvicorn", "backend.app:app", "--host", "0.0.0.0", "--port", "8000", "--log-level", "info"]
+

@@ -1,0 +1,74 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+tep_env/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation (don't need in container)
+*.md
+!README.md
+docs/
+image/
+
+# Logs and temporary files
+*.log
+*.log.*
+logs/
+backend/logs/
+
+# Test files
+tests/
+*.test.js
+*.spec.js
+
+# Build artifacts (will be rebuilt in container)
+dist/
+build/
+*.egg-info/
+
+# Data files (will be mounted as volumes)
+data/
+RCA_Results/
+backend/diagnostics/
+backend/LLM_RCA_Results/
+
+# Scripts (not needed in container)
+*.command
+*.sh
+SETUP_*.command
+START_ALL.command
+STOP_ALL.command
+
+# Config templates (use .env instead)
+.env.template
+config.template.json
+

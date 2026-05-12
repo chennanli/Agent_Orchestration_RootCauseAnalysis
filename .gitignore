@@ -1,0 +1,409 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+# EXCEPTION: Include TEP simulation Fortran modules (required for other users)
+!backend/simulation/temain_mod*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Environment variables (CRITICAL: Never commit API keys!)
+.env
+.env.local
+.env.*.local
+
+# Virtual Environment
+tep_env/
+venv/
+env/
+ENV/
+.venv/
+
+# IDE
+.vscode/settings.json
+.vscode/launch.json
+.idea/
+*.swp
+*.swo
+*~
+.history/
+
+# AI Development Tools
+.augment/
+.bmad-core/
+.clinerules/
+.gemini/
+.cursor/
+.windsurf/
+
+# IDE History and Cache
+.vscode/.ropeproject/
+.vscode/settings.json.bak
+.history/
+*.history
+
+# Logs and temporary files
+*.log
+*.tmp
+temp/
+tmp/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# Claude
+.claude/
+
+# Ignore files that might contain personal tokens
+*token*
+*secret*
+*api_key*
+*password*
+*credential*
+*.env
+*.env.*
+# EXCEPTION: Include template files for setup
+!.env.template
+!*.env.template
+config.ini
+secrets.json
+
+# All .env files in any location
+**/.env
+**/.env.*
+# EXCEPTION: Include templates
+!**/.env.template
+
+# Configuration files with API keys
+config.json
+*/config.json
+integration/src/backend/services/llm-analysis/config.json
+legacy/external_repos/FaultExplainer-main/config.json
+
+# Specific files with API keys (GitHub blocked)
+API_UPDATE_SUMMARY.md
+MVP_IMPLEMENTATION_PLAN.md
+simple_fault_backend.py
+restart_document/README.md
+
+# Exclude specific external repositories but keep tep2py-master
+external_repos/FaultExplainer-*
+external_repos/OptiChat-main/
+external_repos/sensorscan-main/
+external_repos/temexd_mod/
+external_repos/tennessee-eastman-profBraatz-master/
+# NOT excluding external_repos/tep2py-master/ as it's essential
+
+# Data files and outputs - keep folder structure but exclude files
+data/plots/*.png
+data/plots/*.jpg
+data/plots/*.jpeg
+data/plots/*.gif
+data/simulation_results/*.csv
+data/simulation_results/*.dat
+
+# All data files regardless of location
+*.dat
+*.csv
+*.png
+*.jpg
+*.jpeg
+*.gif
+
+# EXCEPTIONS: Include critical files needed for distribution (must come AFTER wildcards)
+!backend/data/fault*.csv
+!backend/data/normal_baseline.csv
+!backend/data/live_fault0.csv
+!backend/stats/features_mean_std.csv
+!frontend/public/fault*.csv
+!frontend/public/images/tep_flowsheet.png
+
+# Large archive files
+*.tar.gz
+*.zip
+*.rar
+*.7z
+*.tar
+*.gz
+
+# Local data that might be large
+data/large_files/
+.claude/
+
+# ========================================
+# INTEGRATION PROJECT ADDITIONS
+# ========================================
+
+# Docker volumes and data
+docker-data/
+postgres_data/
+redis_data/
+tdengine_data/
+tdengine_log/
+prometheus_data/
+grafana_data/
+pgadmin_data/
+
+# Node.js (for React frontend)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn-integrity
+dist/
+build/
+
+# Generated documentation
+docs/exports/*.pdf
+*.pdf
+
+# Integration project environment files
+integration/.env
+integration/.env.local
+integration/.env.development
+integration/.env.production
+
+# Keep the integration project structure
+!integration/
+!integration/src/
+!integration/docs/
+!integration/config/
+!integration/scripts/
+
+# ========================================
+# REPOSITORY CLEANUP ADDITIONS
+# ========================================
+
+# Cleanup temp folder (October 2025 cleanup)
+CLEANUP_TEMP/
+
+# Temp folder for files under review
+temp/
+temp-*
+
+# Backup and redundant files
+*_backup_*.py
+*_debug.py
+*_clean.py
+*_clean_v*.py
+*.py.bak
+*_backup_*.py
+
+# Generated and temporary files
+backend.out
+*.tmp
+*.temp
+test_*.html
+test_*.json
+control_panel_*.js
+
+# One-time setup and export scripts (temporary/debug scripts only)
+export_*.py
+push_to_github.sh
+reset_and_recommit.sh
+clean_repo.sh
+# NOTE: SETUP_NEW_LAPTOP.sh and SETUP_FIRST_TIME.command are KEPT (needed for distribution)
+
+# Generated data files (keep structure, ignore content)
+tep_simulation_fault_*.csv
+simulation_results_*.csv
+*_output.csv
+
+# Personal/Internal Documentation and Working Files
+docs/
+RCA_Results/
+RAG/
+image/
+requirements-frozen.txt
+*_backup_*.py
+*.backup_*
+PORTABILITY.md
+
+# Redundant documentation
+docs/conversation_history*.md
+docs/expert_handoff_prompt.md
+docs/*_SUMMARY.md
+docs/reactions_guess.md
+docs/find_*.md
+docs/get_*.md
+backend/LLM_RCA_Results/
+backend/diagnostics/analysis_history/
+backend/diagnostics/RCA_Report_*.md
+
+# Frontend/Backend temporary documentation and debug files
+frontend/*_FIXES*.md
+frontend/*_FIX*.md
+frontend/DEBUG*.md
+frontend/DIAGNOSTIC*.md
+frontend/VERIFY*.md
+frontend/CLEAR*.md
+frontend/*_Integration_Guide.md
+frontend/FIX_*.sh
+frontend/STOP_*.sh
+frontend/LICENSE
+frontend/README.md
+backend/README_*.md
+backend/logs/README.txt
+frontend/log_materials/
+
+# Analysis history files (generated at runtime)
+backend/diagnostics/analysis_history.md
+backend/diagnostics/analysis_history.jsonl
+backend/diagnostics/operator_context.jsonl
+backend/diagnostics/system_snapshots.jsonl
+
+# Test and verification scripts
+backend/quick_test.sh
+backend/verify_config.sh
+*_test.sh
+*verify*.sh
+.temp/
+
+# Video recording scripts and guides (personal use only)
+recording/
+
+# ========================================
+# ROOT-LEVEL DOCUMENTATION CLEANUP
+# ========================================
+
+# All documentation MD files should be in docs/ folder
+# Only keep README.md, README_DOCKER.md, and LICENSE in root
+*_GUIDE.md
+*_SUMMARY.md
+*_INSTRUCTIONS.md
+*_SETUP.md
+*_STRATEGY.md
+*_COMPLETE*.md
+*_IMPLEMENTATION*.md
+*_DEPLOYMENT*.md
+*_REFERENCE*.md
+*_FIX*.md
+*_TESTING*.md
+CHECKLIST.md
+EXECUTE_NOW.md
+START_HERE.md
+FOR_YOUR_*.md
+DOWNLOAD_FROM_*.md
+COPY_PASTE_*.md
+
+# Setup and test scripts should be in docs/ or scripts/
+SETUP_*.command
+SETUP_*.sh
+test-*.sh
+*_test.sh
+
+# ========================================
+# TEP LIVE COPILOT — OVERRIDES (must come last, beats earlier wildcards)
+# ========================================
+
+# Re-include the architecture / design / plan docs and screenshots. The earlier
+# `docs/` blanket-ignore would otherwise drop them.
+!docs/
+!docs/**
+!docs/assets/
+!docs/assets/*.png
+!docs/superpowers/
+!docs/superpowers/**
+
+# But keep generated docs out
+docs/exports/
+docs/exports/*.pdf
+docs/conversation_history*.md
+docs/expert_handoff_prompt.md
+docs/*_SUMMARY.md
+
+# Runtime artefacts from the agent — these are produced on every Diagnose Now
+# click; do not commit them.
+backend/diagnostics/
+!backend/diagnostics/.gitkeep
+backend/logs/
+backend/logs/*.log.*
+
+# npm install cache (gets created if HOME has no global npm cache configured)
+.npm-cache/
+**/.npm-cache/
+
+# Superpowers visual-companion brainstorm session state (transient HTML mockups
+# + server PID/socket files; nothing here is source code).
+.superpowers/
+
+# ========================================
+# Working notes / personal scratch — NEVER commit
+# ========================================
+# Internal handoff docs and per-session debug journals do NOT belong in a
+# public portfolio repo. The patterns below catch the variants we have
+# already seen plus likely-future variants.
+AGENTIC_UPGRADE.md
+DEBUG_CASE_STUDY.md
+CODEX_*.md
+*_TO_CLAUDE.md
+*_FROM_CLAUDE.md
+CLAUDE.md
+CLAUDE_*.md
+**/CLAUDE.md
+.claude/
+
+# ========================================
+# Personal IDE / editor / tooling config — kept locally, not committed
+# ========================================
+.roomodes
+.serena/
+.cursor/
+.augment/
+.bmad-core/
+.gemini/
+.windsurf/
+.codex/
+
+# ========================================
+# Engineering working notes (kept locally, not committed)
+# ========================================
+# Implementation specs / plans that the AI engineering agents work from.
+# They live in the local working tree for reference but aren't public docs.
+docs/superpowers/
+
+# Eval harness outputs — re-generated on every `--run-agent` invocation.
+# Tracking these leaks local paths in tracebacks (see backend/diagnostics/).
+backend/evaluation/results/
+
+# git mailmap with AI authorship aliases — explicitly disallowed in this repo.
+.mailmap
+
+# Vite build output (frontend/dist already caught by generic dist/ above,
+# this is just defensive)
+frontend/dist/
+frontend/.vite/
+
+# Tmp log files left by START_TEP_COPILOT.command
+/tmp/tep_*.log
+
+# Re-include the new launcher scripts and the live-copilot smoke harness.
+# They don't match the SETUP_*.command / *_test.sh patterns above, but
+# being explicit prevents future accidental ignores.
+!START_TEP_COPILOT.command
+!STOP_TEP_COPILOT.command
+!scripts/smoke_live_copilot.sh
+

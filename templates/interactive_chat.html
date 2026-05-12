@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive RCA Chat</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0a0a0a;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            padding: 20px;
+        }
+        h1 {
+            color: #00ff00;
+            text-align: center;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #00ff00;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .snapshot-context {
+            background: #1a1a1a;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 2px solid #00ff00;
+            border-radius: 8px;
+        }
+        .snapshot-context h2 {
+            color: #00ff00;
+            margin-bottom: 15px;
+        }
+        .snapshot-info {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .info-item {
+            background: #2a2a2a;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .info-item strong {
+            color: #00ff00;
+        }
+        .feature-analysis {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+        }
+        .feature-analysis pre {
+            color: #ddd;
+            white-space: pre-wrap;
+            font-size: 13px;
+        }
+        .llm-results {
+            background: #1a1a1a;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 2px solid #00ff00;
+            border-radius: 8px;
+        }
+        .llm-results h2 {
+            color: #00ff00;
+            margin-bottom: 15px;
+        }
+        .root-cause-item {
+            background: #2a2a2a;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #00ff00;
+            border-radius: 5px;
+        }
+        .root-cause-item.ruled-out {
+            opacity: 0.5;
+            border-left-color: #ff0000;
+            text-decoration: line-through;
+        }
+        .root-cause-item h4 {
+            color: #00ff00;
+            margin-bottom: 10px;
+        }
+        .root-cause-item .analysis-text {
+            color: #ddd;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+        .root-cause-buttons {
+            margin-top: 10px;
+        }
+        .btn {
+            padding: 8px 15px;
+            margin-right: 8px;
+            background: #333;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        .btn:hover {
+            background: #00ff00;
+            color: #000;
+        }
+        .btn-danger {
+            background: #ff0000;
+            color: #fff;
+            border-color: #ff0000;
+        }
+        .btn-danger:hover {
+            background: #cc0000;
+        }
+        .chat-container {
+            background: #1a1a1a;
+            border: 2px solid #00ff00;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .chat-container h2 {
+            color: #00ff00;
+            margin-bottom: 15px;
+        }
+        .chat-messages {
+            height: 400px;
+            overflow-y: auto;
+            background: #0a0a0a;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        .chat-message {
+            margin-bottom: 15px;
+            padding: 12px;
+            border-radius: 5px;
+            animation: fadeIn 0.3s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .user-message {
+            background: #2a4a2a;
+            text-align: right;
+            border-left: 4px solid #00ff00;
+        }
+        .ai-message {
+            background: #2a2a4a;
+            border-left: 4px solid #0088ff;
+        }
+        .error-message {
+            background: #4a2a2a;
+            border-left: 4px solid #ff0000;
+        }
+        .message-role {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #00ff00;
+        }
+        .message-content {
+            color: #ddd;
+            line-height: 1.6;
+        }
+        .knowledge-sources {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #444;
+            font-size: 11px;
+            color: #888;
+        }
+        .chat-input-container {
+            display: flex;
+            gap: 10px;
+        }
+        .chat-input {
+            flex: 1;
+            padding: 12px;
+            background: #2a2a2a;
+            color: #fff;
+            border: 1px solid #00ff00;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .chat-input:focus {
+            outline: none;
+            border-color: #00ff00;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+        }
+        .btn-send {
+            padding: 12px 30px;
+            background: #00ff00;
+            color: #000;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+        }
+        .btn-send:hover {
+            background: #00cc00;
+        }
+        .btn-report {
+            padding: 12px 30px;
+            background: #ffaa00;
+            color: #000;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+        }
+        .btn-report:hover {
+            background: #ff8800;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            color: #00ff00;
+            margin: 10px 0;
+        }
+        .loading.active {
+            display: block;
+        }
+        .ruled-out-badge {
+            display: inline-block;
+            background: #ff0000;
+            color: #fff;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Interactive Root Cause Analysis Chat</h1>
+        
+        <!-- Snapshot Context -->
+        <div class="snapshot-context">
+            <h2>📸 Snapshot Context</h2>
+            <div class="snapshot-info">
+                <div class="info-item">
+                    <strong>ID:</strong> <span id="snapshot-id">Loading...</span>
+                </div>
+                <div class="info-item">
+                    <strong>Timestamp:</strong> <span id="snapshot-time">Loading...</span>
+                </div>
+                <div class="info-item">
+                    <strong>Name:</strong> <span id="snapshot-name">Loading...</span>
+                </div>
+            </div>
+            <div class="feature-analysis">
+                <strong style="color: #00ff00;">Feature Analysis:</strong>
+                <pre id="feature-analysis">Loading...</pre>
+            </div>
+        </div>
+        
+        <!-- LLM Analysis Results -->
+        <div class="llm-results">
+            <h2>🤖 LLM Analysis Results</h2>
+            <div id="root-causes-container">
+                <p style="color: #888;">Loading LLM analysis results...</p>
+            </div>
+        </div>
+        
+        <!-- Chat Interface -->
+        <div class="chat-container">
+            <h2>💬 Interactive Chat</h2>
+            <div class="chat-messages" id="chat-messages">
+                <div class="chat-message ai-message">
+                    <div class="message-role">AI Assistant:</div>
+                    <div class="message-content">
+                        Hello! I'm here to help you analyze this fault. You can:
+                        <ul style="margin-top: 10px; margin-left: 20px;">
+                            <li>Ask questions about the analysis</li>
+                            <li>Rule out hypotheses you've verified</li>
+                            <li>Request alternative explanations</li>
+                            <li>Generate a final report when ready</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="loading" id="loading">⏳ AI is thinking...</div>
+            <div class="chat-input-container">
+                <input type="text" id="chat-input" class="chat-input" placeholder="Ask about this analysis or rule out hypotheses..." onkeypress="if(event.key==='Enter') sendMessage()">
+                <button class="btn-send" onclick="sendMessage()">📤 Send</button>
+                <button class="btn-report" onclick="generateReport()">📄 Generate Report</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/static/interactive_chat.js"></script>
+</body>
+</html>
+

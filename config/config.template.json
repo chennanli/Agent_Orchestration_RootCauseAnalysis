@@ -1,0 +1,64 @@
+{
+  "prompt": "explain",
+  "fault_trigger_consecutive_step": 3,
+  "topkfeatures": 6,
+  "pca_window_size": 20,
+  "decimation_N": 1,
+  "llm_min_interval_seconds": 60,
+  "anomaly_threshold": 0.055,
+  "models": {
+    "anthropic": {
+      "api_key": "${ANTHROPIC_API_KEY}",
+      "model_name": "claude-3-5-sonnet-20241022",
+      "enabled": false,
+      "premium": true,
+      "description": "High-quality analysis with API costs - Best for critical analysis"
+    },
+    "gemini": {
+      "api_key": "${GEMINI_API_KEY}",
+      "model_name": "gemini-2.5-flash",
+      "enabled": false,
+      "premium": true,
+      "description": "Google Gemini 2.5 Flash - 1M context, cheap. Disabled by default; opt-in in the UI."
+    },
+    "lmstudio": {
+      "enabled": false,
+      "base_url": "http://127.0.0.1:1234/v1",
+      "model_name": "openai/gpt-oss-20b",
+      "api_key": "not-needed",
+      "premium": false,
+      "description": "Local model via LM Studio - FREE but lower quality - For testing only"
+    }
+  },
+  "lmstudio": {
+    "enabled": false,
+    "base_url": "http://127.0.0.1:1234/v1",
+    "model_name": "local-model",
+    "api_key": "not-needed",
+    "premium": false,
+    "description": "Local model - no API costs (Optional - slow but high quality)"
+  },
+  "mistral": {
+    "enabled": false,
+    "model_size": "qwen-7b",
+    "premium": false,
+    "description": "Local LLM - Disabled in favor of LM Studio"
+  },
+  "analysis": {
+    "threshold": 0.01,
+    "window_size": 100,
+    "min_samples": 10,
+    "pca_components": 10
+  },
+  "logging": {
+    "level": "INFO",
+    "file": "llm_analysis.log"
+  },
+  "cost_protection": {
+    "enabled": true,
+    "premium_session_duration_minutes": 30,
+    "auto_shutdown_simulation": true,
+    "warning_threshold_minutes": 5,
+    "description": "Automatic shutdown after 30 minutes to prevent runaway costs"
+  }
+}

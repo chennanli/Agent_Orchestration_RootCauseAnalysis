@@ -1,0 +1,42 @@
+# Example Dockerfile for TEP Demo Project
+# This would package ALL dependencies (system + Python + Node) in one container
+
+FROM python:3.12-slim
+
+# Install system dependencies (the ones that caused your problem!)
+RUN apt-get update && apt-get install -y \
+    gfortran \
+    gcc \
+    g++ \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js for frontend (if needed)
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements and install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the entire project
+COPY . .
+
+# Build frontend (if needed)
+WORKDIR /app/frontend
+RUN npm install && npm run build
+
+# Go back to app root
+WORKDIR /app
+
+# Expose ports
+EXPOSE 9002 8000 5173
+
+# Start the application
+CMD ["python", "unified_console.py"]
+
+# To build: docker build -t tep-demo .
+# To run: docker run -p 9002:9002 -p 8000:8000 -p 5173:5173 tep-demo

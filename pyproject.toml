@@ -1,0 +1,74 @@
+[project]
+name = "tep-agent-orchestration-demo"
+version = "0.2.0"
+description = "Read-only agentic root-cause-analysis workbench for the Tennessee Eastman Process, with an optional NeMo Agent Toolkit (NAT) workflow."
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+license = { text = "Apache-2.0" }
+authors = [
+    { name = "chennanli" },
+]
+keywords = ["tep", "tennessee-eastman", "agentic", "rca", "industrial-ai", "nemo-agent-toolkit", "nat"]
+
+# Runtime dependencies that the legacy demo + the new NAT-tool layer + the
+# new FastAPI router all need. NAT itself is intentionally NOT pulled in
+# here (see [project.optional-dependencies]).
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+    "pydantic>=2.6",
+    "pandas>=2.0",
+    "numpy>=1.26",
+    "scikit-learn>=1.3",
+    "scipy>=1.11",
+    "python-dotenv>=1.0",
+    "openai>=1.12",
+    "anthropic>=0.30",
+    "google-generativeai>=0.5",
+    "matplotlib>=3.8",
+    "plotly>=5.20",
+]
+
+[project.optional-dependencies]
+# Real NeMo Agent Toolkit runtime. Install with:
+#     uv sync --extra nat
+# Requires Python 3.11+ and an NVIDIA_API_KEY for the `_type: nim` LLM in
+# backend/nat_workflows/tep_rca_workflow.yml.
+nat = [
+    "nvidia-nat[langchain]>=1.3.0,<2.0.0",
+]
+
+# Dev / lint / test tooling. Install with:
+#     uv sync --extra dev
+dev = [
+    "ruff>=0.4",
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+]
+
+[project.urls]
+Homepage = "https://github.com/chennanli/TEP_Agent_Orchestration_demo"
+Repository = "https://github.com/chennanli/TEP_Agent_Orchestration_demo"
+
+# ---------------------------------------------------------------------------
+# Build system: we ship the project as a Python application, not a wheel,
+# so `setuptools` is enough to make `uv sync` happy.
+# ---------------------------------------------------------------------------
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["backend*"]
+
+# ---------------------------------------------------------------------------
+# Tool config
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["backend"]

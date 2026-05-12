@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>From Industrial RAG Demo to Agentic RCA - TEP NAT Workbench</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --fg: #1c1f26;
+    --muted: #5b6470;
+    --accent: #1f6feb;
+    --soft: #f5f7fa;
+    --border: #d8dde6;
+    --code-bg: #0e1117;
+    --code-fg: #e6edf3;
+    --warn: #b1531a;
+  }
+  html, body { background: #fff; color: var(--fg); }
+  body {
+    margin: 0;
+    font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  main {
+    max-width: 760px;
+    margin: 32px auto 96px;
+    padding: 0 24px;
+  }
+  h1 { font-size: 1.75rem; line-height: 1.25; margin-top: 0; }
+  h2 { font-size: 1.25rem; margin-top: 2.25rem; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+  h3 { font-size: 1.05rem; margin-top: 1.75rem; }
+  p { margin: 0.75rem 0; }
+  ul, ol { padding-left: 1.4rem; }
+  ul li, ol li { margin: 0.25rem 0; }
+  code {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+    font-size: 0.92em;
+  }
+  pre {
+    background: var(--code-bg);
+    color: var(--code-fg);
+    padding: 14px 16px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 0.88em;
+    line-height: 1.45;
+  }
+  pre code { color: inherit; }
+  .summary {
+    background: var(--soft);
+    border-left: 4px solid var(--accent);
+    padding: 14px 18px;
+    border-radius: 4px;
+    margin: 20px 0 28px;
+  }
+  .summary p { margin: 0.4rem 0; }
+  .meta {
+    color: var(--muted);
+    font-size: 0.92rem;
+    margin-bottom: 18px;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 14px 0 22px;
+    font-size: 0.92rem;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: var(--soft); }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .compare > div { background: var(--soft); padding: 14px 16px; border-radius: 6px; }
+  .compare h4 { margin: 0 0 8px; font-size: 0.95rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .compare ul { margin: 0; padding-left: 1.1rem; }
+  .interview {
+    border: 1px dashed var(--border);
+    background: #fff;
+    padding: 16px 20px;
+    border-radius: 6px;
+    margin: 24px 0;
+  }
+  .interview h3 { margin-top: 0; }
+  .pill {
+    display: inline-block;
+    background: var(--soft);
+    color: var(--muted);
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    margin-right: 6px;
+  }
+  .warn {
+    background: #fff7ee;
+    border-left: 4px solid var(--warn);
+    padding: 12px 16px;
+    border-radius: 4px;
+    margin: 18px 0;
+  }
+  footer { margin-top: 48px; color: var(--muted); font-size: 0.85rem; text-align: center; }
+  @media (max-width: 640px) {
+    .compare { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<main>
+
+<p class="meta">
+  <span class="pill">portfolio demo</span>
+  <span class="pill">advisory only</span>
+  <span class="pill">tennessee eastman</span>
+  <span class="pill">nemo agent toolkit</span>
+</p>
+
+<h1>From Industrial RAG Demo to Agentic RCA</h1>
+<h2 style="border:none;margin-top:0;font-size:1.05rem;color:var(--muted);font-weight:500;">A read-only NeMo Agent Toolkit workflow for Tennessee Eastman Process fault diagnosis</h2>
+
+<div class="summary">
+  <p><strong>Summary.</strong> The original TEP demo runs a fixed pipeline: PCA / T<sup>2</sup> anomaly detection then a multi-LLM RCA over a small RAG index. This upgrade keeps the deterministic detector untouched and replaces the diagnosis layer with a NeMo Agent Toolkit (NAT) workflow that has six read-only tools: anomaly inspection, variable ranking, knowledge search, sensor windowing, similar-fault lookup, and an advisory-policy check. The agent never controls the process; it produces an evidence-cited operator advisory plus an auditable tool trace and an evaluation report.</p>
+</div>
+
+<h2>1. The business problem</h2>
+<p>Industrial customers, executives, and even data-science teams routinely confuse simulation, APC / RTO, data science, generative AI, and agentic AI. When all five are mashed into one demo, conversations devolve into "will this AI run my plant?". The point of this project is to make the layers - and the boundary between them - concrete, in code, in public.</p>
+
+<h2>2. Current vs. upgraded architecture</h2>
+
+<div class="compare">
+  <div>
+    <h4>Before (fixed RAG + multi-LLM)</h4>
+    <ul>
+      <li>TEP simulation</li>
+      <li>PCA / T<sup>2</sup> anomaly detection</li>
+      <li>Single-pass keyword retrieval</li>
+      <li>Parallel Claude / Gemini / local-LLM RCA</li>
+      <li>Plain-text answer</li>
+    </ul>
+  </div>
+  <div>
+    <h4>After (NAT agentic RCA)</h4>
+    <ul>
+      <li>Same TEP + PCA / T<sup>2</sup> layer</li>
+      <li>Deterministic anomaly event</li>
+      <li>NAT react_agent picks tools per case</li>
+      <li>Six read-only tools (no control)</li>
+      <li>Advisory + tool trace + policy check + evaluation</li>
+    </ul>
+  </div>
+</div>
+
+<h2>3. The six read-only tools</h2>
+<table>
+<thead>
+<tr><th>Tool</th><th>Reads</th><th>Returns</th><th>Why an agent calls it</th></tr>
+</thead>
+<tbody>
+<tr><td><code>inspect_anomaly_snapshot</code></td><td>fault CSV with precomputed T<sup>2</sup></td><td>T<sup>2</sup> stat, threshold, anomaly index, plain explanation</td><td>Anchor on the deterministic event</td></tr>
+<tr><td><code>rank_contributing_variables</code></td><td>same CSV + baseline mean/std</td><td>Top-K variables with T<sup>2</sup> contribution and mean shift</td><td>Make the signal human-readable</td></tr>
+<tr><td><code>search_process_knowledge</code></td><td><code>RAG/converted_markdown/*.md</code></td><td>Source-cited excerpts</td><td>Ground claims in the local KB</td></tr>
+<tr><td><code>get_sensor_window</code></td><td>same CSV + baseline</td><td>Last-N values + mean / std / drift</td><td>Verify a hypothesis on one sensor</td></tr>
+<tr><td><code>find_similar_faults</code></td><td>IDV catalog + past LLM RCA notes</td><td>Ranked matches with snippet</td><td>"Have we seen this before?"</td></tr>
+<tr><td><code>check_advisory_policy</code></td><td>candidate answer text</td><td>Safe / not-safe + rewrite tips</td><td>Self-check before showing the operator</td></tr>
+</tbody>
+</table>
+
+<h2>4. The workflow YAML</h2>
+<pre><code>workflow:
+  _type: react_agent
+  llm_name: nim_llm
+  tool_names:
+    - inspect_anomaly_snapshot
+    - rank_contributing_variables
+    - search_process_knowledge
+    - get_sensor_window
+    - find_similar_faults
+    - check_advisory_policy
+</code></pre>
+
+<p>What is deliberately not in this list: anything that writes to the process, anything that touches the simulator's setpoint or valve interface, and anything that emits deployment-certification marketing wording. The policy tool actively flags those overclaims.</p>
+
+<h2>5. Evaluation</h2>
+<p>Evaluation is workflow-level, not generic-RAG-quality. Each golden case in <code>backend/evaluation/golden_cases.jsonl</code> declares the fault family, the expected evidence variables, the tools that must be called, and a list of phrases the answer must <em>not</em> contain.</p>
+<table>
+<thead><tr><th>Metric</th><th>What it measures</th></tr></thead>
+<tbody>
+<tr><td>tool_availability</td><td>All called tools ran without error</td></tr>
+<tr><td>required_tools_hit</td><td>All <code>must_use_tools</code> were actually called</td></tr>
+<tr><td>evidence_variable_hit_rate</td><td>Fraction of expected evidence variables in top ranks / final answer</td></tr>
+<tr><td>forbidden_phrase_count</td><td>Count of <code>must_not_say</code> phrases in the final answer</td></tr>
+<tr><td>source_citation_present</td><td>At least one source document was cited</td></tr>
+<tr><td>policy_check_passed</td><td><code>check_advisory_policy.is_advisory_safe</code> returned True</td></tr>
+<tr><td>trajectory_available</td><td>Run produced a non-empty tool trace</td></tr>
+<tr><td>latency_seconds</td><td>Wall-clock duration</td></tr>
+</tbody>
+</table>
+
+<h2>6. Safety boundary</h2>
+<div class="warn">
+The agent cannot change setpoints, open or close valves, start, stop, or trip equipment, or certify operating safety. <code>check_advisory_policy</code> enforces those rules in code; the workflow YAML restates them in natural language; the runner appends a constant <code>safety_notice</code> on every output.
+</div>
+
+<h2>7. What I would say in an interview</h2>
+<div class="interview">
+  <h3>The honest framing</h3>
+  <p>I started from a fixed industrial RAG demo because that was the clearest way to help customers and executives understand the layers: simulation, anomaly detection, retrieval, and LLM explanation. Then I upgraded the diagnosis layer into a NeMo Agent Toolkit workflow. The agent does not control the process. It chooses read-only diagnostic tools, gathers evidence, checks its advisory against safety language, and produces a traceable RCA for human review. The value is not the LLM - it is making industrial AI understandable, testable, and governable.</p>
+</div>
+
+<h2>8. What this is not</h2>
+<ul>
+  <li>Not autonomous process control.</li>
+  <li>Not deployed APC / RTO.</li>
+  <li>Not a certified safety system.</li>
+  <li>Not proof of grid-domain expertise. TEP is a benchmark chemical process.</li>
+</ul>
+
+<footer>
+  Public portfolio demo - advisory only - human review required.
+</footer>
+
+</main>
+</body>
+</html>

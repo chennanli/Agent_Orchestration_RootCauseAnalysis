@@ -1,0 +1,20 @@
+{
+  "network_info": {
+    "local_ip": "10.252.64.231",
+    "faultexplainer_backend": "http://10.252.64.231:8000",
+    "faultexplainer_frontend": "http://10.252.64.231:3000",
+    "streamlit_app": "http://10.252.64.231:8501",
+    "safari_compatible": true
+  },
+  "last_updated": "2024-01-15T10:00:00Z",
+  "safari_instructions": {
+    "step1": "Open Safari and navigate to 10.252.64.231:3000",
+    "step2": "If prompted about security, click 'Advanced' then 'Proceed'",
+    "step3": "Bookmark the IP address for future use"
+  },
+  "troubleshooting": {
+    "firewall": "Check macOS firewall settings if connection fails",
+    "network": "Ensure you're on the same network as the server",
+    "ports": "Verify ports 3000, 8000, 8501 are not blocked"
+  }
+}

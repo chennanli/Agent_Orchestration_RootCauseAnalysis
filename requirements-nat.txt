@@ -1,0 +1,10 @@
+# Optional dependency stack for the NeMo Agent Toolkit (NAT) RCA workflow.
+#
+# Install with:
+#   pip install -r requirements-nat.txt
+#
+# This is intentionally separated from the main requirements.txt so the
+# legacy multi-LLM RCA demo continues to work even when NAT is not
+# installed. See backend/nat_workflows/README.md for full setup notes.
+
+nvidia-nat[langchain]

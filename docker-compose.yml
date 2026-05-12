@@ -1,0 +1,120 @@
+# ==============================================================================
+# TEP Demo - Docker Compose Configuration
+# ==============================================================================
+# Purpose: Orchestrate all TEP system services
+# Architecture: Monolithic backend + Frontend + Unified Console
+# Usage: docker-compose up -d
+# ==============================================================================
+
+version: '3.8'
+
+services:
+  # ============================================================================
+  # Backend API - FastAPI with TEP Simulation, LLM, RAG
+  # ============================================================================
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: tep-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # Override LMStudio URL for Docker networking
+      - LMSTUDIO_URL=${LMSTUDIO_URL:-http://host.docker.internal:1234}
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # Persistent data volumes
+      - ./data:/app/data
+      - ./RCA_Results:/app/RCA_Results
+      - ./backend/diagnostics:/app/backend/diagnostics
+      - ./backend/LLM_RCA_Results:/app/backend/LLM_RCA_Results
+      - ./backend/logs:/app/backend/logs
+      # RAG knowledge base
+      - ./RAG/converted_markdown:/app/RAG/converted_markdown
+    networks:
+      - tep-network
+    restart: unless-stopped
+    extra_hosts:
+      # Enable access to host machine (for LMStudio on host)
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ============================================================================
+  # Frontend - React + Vite (Production Build)
+  # ============================================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: tep-frontend
+    ports:
+      - "5173:80"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - tep-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  # ============================================================================
+  # Unified Console - Flask Control Panel
+  # ============================================================================
+  unified-console:
+    build:
+      context: .
+      dockerfile: Dockerfile.console
+    container_name: tep-console
+    ports:
+      - "9002:9002"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./templates:/app/templates
+      - ./static:/app/static
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - tep-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9002/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+# ==============================================================================
+# Networks
+# ==============================================================================
+networks:
+  tep-network:
+    driver: bridge
+    name: tep-network
+
+# ==============================================================================
+# Volumes (Optional: Use named volumes for better management)
+# ==============================================================================
+# Uncomment if you want Docker-managed volumes instead of bind mounts
+# volumes:
+#   tep-data:
+#   tep-results:
+#   tep-diagnostics:
+

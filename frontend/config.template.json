@@ -1,0 +1,28 @@
+{
+  "models": {
+    "anthropic": {
+      "api_key": "${ANTHROPIC_API_KEY}",
+      "model_name": "claude-3-5-sonnet-20241022",
+      "enabled": false,
+      "premium": true,
+      "description": "High-quality analysis with API costs"
+    },
+    "gemini": {
+      "api_key": "${GOOGLE_API_KEY}",
+      "backup_api_key": "${GOOGLE_API_KEY_BACKUP}",
+      "model_name": "gemini-1.5-flash",
+      "enabled": true,
+      "premium": true,
+      "description": "Primary LLM for TEP fault analysis",
+      "auto_failover": true
+    },
+    "lmstudio": {
+      "enabled": false,
+      "base_url": "http://127.0.0.1:1234/v1",
+      "model_name": "mistralai_mistral-small-3.1-24b-instruct-2503",
+      "api_key": "not-needed",
+      "premium": false,
+      "description": "Local model - no API costs"
+    }
+  }
+}
