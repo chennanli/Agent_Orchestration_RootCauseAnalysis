@@ -12,18 +12,24 @@ import "@testing-library/jest-dom/vitest";
 import { vi } from "vitest";
 
 // Mantine queries the media query for dark/light mode on mount.
-Object.defineProperty(window, "matchMedia", {
-  writable: true,
-  value: vi.fn().mockImplementation((query: string) => ({
+// Use a plain function (not vi.fn) so vi.restoreAllMocks() in test
+// beforeEach hooks can't reset it — the stub must survive across tests.
+function stubMatchMedia(query: string) {
+  return {
     matches: false,
     media: query,
     onchange: null,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  })),
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  };
+}
+Object.defineProperty(window, "matchMedia", {
+  writable: true,
+  configurable: true,
+  value: stubMatchMedia,
 });
 
 // Minimal EventSource stub so useAgentStream's `new EventSource(...)` doesn't
