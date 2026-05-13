@@ -122,6 +122,15 @@ jobs:
           tags: |
             ${{ steps.image.outputs.name }}:${{ steps.image.outputs.version }}
             ${{ steps.image.outputs.name }}:latest
+          # OCI standard labels. The `source` label is what GitHub uses to
+          # auto-link the published package back to this repo, so the image
+          # shows up in the repo's "Packages" sidebar and the
+          # /pkgs/container/.../  URL works. Without this label the package
+          # exists but lives "loose" under the user namespace only.
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.image.outputs.version }}
           # Reuse layer cache across runs — turns a 5-min build into 30 sec
           # when only the application code changed. `scope` keeps each
           # component's cache separate so they don't trash each other.
