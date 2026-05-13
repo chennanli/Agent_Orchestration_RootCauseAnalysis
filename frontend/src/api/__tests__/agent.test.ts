@@ -25,8 +25,7 @@ function mockFetch(jsonBody: unknown, status = 200) {
     text: () => Promise.resolve(""),
     json: () => Promise.resolve(jsonBody),
   });
-  // @ts-expect-error — we're deliberately replacing the global
-  globalThis.fetch = fn;
+  globalThis.fetch = fn as unknown as typeof fetch;
   return fn;
 }
 
