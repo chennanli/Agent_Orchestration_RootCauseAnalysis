@@ -12,7 +12,10 @@
 # ------------------------------------------------------------------------------
 # Stage 1: build
 # ------------------------------------------------------------------------------
-FROM node:20-alpine AS builder
+# Node 22 LTS (was node:20-alpine). Vitest 4 + Vite 5+ refuse to install
+# on Node 20.18 and below ("EBADENGINE: Unsupported engine ^20.19.0 ||
+# ^22.12.0 || >=24.0.0"). 22-alpine has 22.13.x which satisfies it.
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
