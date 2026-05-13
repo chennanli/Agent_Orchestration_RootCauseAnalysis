@@ -147,3 +147,54 @@ jobs:
         run: |
           echo "::notice title=Published::${{ steps.image.outputs.name }}:${{ steps.image.outputs.version }}"
           echo "  docker pull ${{ steps.image.outputs.name }}:${{ steps.image.outputs.version }}"
+
+  # ---------------------------------------------------------------------------
+  # Create a GitHub Release for this tag, with auto-generated notes from
+  # commits since the previous tag. Runs once after all 3 image jobs finish
+  # so it can mention them in the body.
+  #
+  # Without this, `git tag v*` only creates a tag; the /releases page stays
+  # empty. With it, every `v*` tag auto-produces a Releases entry that
+  # shows up on the repo home page, in RSS, etc.
+  # ---------------------------------------------------------------------------
+  create-github-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    # Don't try to create a release on a manual workflow_dispatch — those
+    # are typically re-runs of an already-released tag.
+    if: github.event_name == 'push'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # need history for auto-generated notes
+
+      - name: Compute lowercased image base name
+        id: image_base
+        run: |
+          REPO_LC=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          echo "base=ghcr.io/${REPO_LC}" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          body: |
+            ## Docker images
+
+            Pull with:
+            ```bash
+            COMPOSE_IMAGE_TAG=${{ github.ref_name }} docker compose pull
+            docker compose up
+            ```
+
+            Or directly:
+            - `${{ steps.image_base.outputs.base }}/backend:${{ github.ref_name }}`
+            - `${{ steps.image_base.outputs.base }}/console:${{ github.ref_name }}`
+            - `${{ steps.image_base.outputs.base }}/frontend:${{ github.ref_name }}`
+
+            ---

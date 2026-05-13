@@ -204,7 +204,7 @@ ghcr.io/chennanli/agent_orchestration_rootcauseanalysis/console:<tag>
 ghcr.io/chennanli/agent_orchestration_rootcauseanalysis/frontend:<tag>
 ```
 
-Set `COMPOSE_IMAGE_TAG=v0.3.0` in `.env` to pin to a specific release; otherwise `:latest` follows main.
+Set `COMPOSE_IMAGE_TAG=v0.3.1` in `.env` to pin to the first complete release; otherwise `:latest` follows main. (Note: `v0.3.0` was the initial CD attempt — only the frontend and console images published; the backend build failed due to a gitignored `RAG/` path. Use `v0.3.1` or later.)
 
 ---
 

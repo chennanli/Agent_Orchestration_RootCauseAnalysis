@@ -109,3 +109,41 @@ jobs:
         # `npm run build` is `tsc && vite build`. So this step also acts
         # as our TypeScript type-check: any new type error breaks CI.
         run: npm run build
+
+      - name: Frontend tests
+        # `npm test` runs vitest in non-watch mode. See
+        # frontend/vitest.config.ts and frontend/src/**/__tests__/*.
+        run: npm test
+
+  # ---------------------------------------------------------------------------
+  # Docker layer: validate that docker-compose.yml + the three Dockerfiles
+  # are at least internally consistent. We do NOT actually build the images
+  # here (the Release workflow does that on every v* tag) — just sanity-check
+  # the wiring on every push so a typo in a Dockerfile path or a renamed
+  # service breaks CI immediately, not at release time.
+  # ---------------------------------------------------------------------------
+  docker-compose-validate:
+    name: docker-compose config sanity check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate docker-compose.yml
+        # `docker compose config` resolves variables, checks that every
+        # `build.dockerfile:` path exists, and prints the fully-expanded
+        # config. --quiet hides the dump and just emits errors. This is
+        # the cheapest possible "would this even start?" smoke.
+        run: docker compose config --quiet
+
+      - name: Verify all referenced Dockerfiles exist
+        # Belt-and-braces: explicitly list the three Dockerfiles the
+        # compose file references. Catches renamed files even if `compose
+        # config` somehow lets them through.
+        run: |
+          for f in Dockerfile.backend Dockerfile.console frontend/Dockerfile; do
+            if [[ ! -f "$f" ]]; then
+              echo "::error::Missing Dockerfile referenced by docker-compose.yml: $f"
+              exit 1
+            fi
+          done
+          echo "All Dockerfiles present."
