@@ -23,10 +23,9 @@ import json
 import os
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
-
 _ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(_ROOT))
 
@@ -184,7 +183,7 @@ def main():
     _OUT = _ROOT / "backend" / "evaluation" / "results"
     _OUT.mkdir(parents=True, exist_ok=True)
     (_OUT / "retrieval_summary.json").write_text(json.dumps({
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
         "k": K,
         "n_queries": len(_GOLD),
         "substrates": results,
@@ -192,7 +191,7 @@ def main():
 
     md = [
         "# Retrieval Substrate Evaluation",
-        f"**Generated:** {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}",
+        f"**Generated:** {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
         f"**Queries:** {len(_GOLD)}  |  **k:** {K}",
         "",
         f"| Substrate | recall@{K} | MRR | latency_mean (ms) | latency_p95 (ms) |",

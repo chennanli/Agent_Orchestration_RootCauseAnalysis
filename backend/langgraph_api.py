@@ -27,7 +27,7 @@ import logging
 import re
 import time
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -174,7 +174,7 @@ async def discovery_diagnose(req: DiagnoseRequest) -> DiagnoseStarted:
     return DiagnoseStarted(
         run_id=run_id,
         fault_id=req.fault_id,
-        started_at=datetime.utcnow().isoformat() + "Z",
+        started_at=datetime.now(timezone.utc).isoformat() + "Z",
         stream_url=f"/api/discovery/runs/{run_id}/stream",
     )
 

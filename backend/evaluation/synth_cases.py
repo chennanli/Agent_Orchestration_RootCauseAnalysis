@@ -24,10 +24,9 @@ import os
 import re
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
-
 _ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(_ROOT))
 
@@ -111,7 +110,7 @@ def generate_cases(fault_ids: List[str], per_fault: int = 3) -> List[Dict[str, A
                     "question": q.strip(),
                     "family_label": family,  # ground truth, hidden from agent
                     "synthetic": True,
-                    "generated_at": datetime.utcnow().isoformat(),
+                    "generated_at": datetime.now(timezone.utc).isoformat(),
                 })
     return out
 

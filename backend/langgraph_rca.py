@@ -27,10 +27,9 @@ import json
 import os
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
-
 # ---------------------------------------------------------------------------
 # Env
 # ---------------------------------------------------------------------------
@@ -97,7 +96,7 @@ class RCAState(TypedDict, total=False):
 # ---------------------------------------------------------------------------
 def _append_audit(state: RCAState, node: str, data: dict) -> list:
     trail = list(state.get("audit_trail") or [])
-    trail.append({"node": node, "ts": datetime.utcnow().isoformat(), **data})
+    trail.append({"node": node, "ts": datetime.now(timezone.utc).isoformat(), **data})
     return trail
 
 
@@ -105,6 +104,49 @@ def _safe_invoke(llm, messages: list) -> str:
     """Invoke LLM and return content string; raise on failure."""
     response = llm.invoke(messages)
     return response.content if hasattr(response, "content") else str(response)
+
+
+def _extract_first_json(text: str) -> Optional[Any]:
+    """Find and parse the first top-level JSON value in `text`.
+
+    Earlier code used `re.search(r'\\{.*\\}', text, re.DOTALL)` which is greedy
+    and silently spans multiple JSON objects, or fails on prose that contains
+    a `}` after the actual JSON. This walks the string and uses balanced-brace
+    counting (tracking string literals + escapes) so it returns the FIRST
+    syntactically complete JSON value. Returns None if no parseable value is
+    found. Supports both object and array top-level values.
+    """
+    if not text:
+        return None
+    for opener, closer in (("{", "}"), ("[", "]")):
+        start = text.find(opener)
+        while start != -1:
+            depth = 0
+            in_str = False
+            escape = False
+            for i in range(start, len(text)):
+                ch = text[i]
+                if in_str:
+                    if escape:
+                        escape = False
+                    elif ch == "\\":
+                        escape = True
+                    elif ch == '"':
+                        in_str = False
+                else:
+                    if ch == '"':
+                        in_str = True
+                    elif ch == opener:
+                        depth += 1
+                    elif ch == closer:
+                        depth -= 1
+                        if depth == 0:
+                            try:
+                                return json.loads(text[start: i + 1])
+                            except Exception:
+                                break  # malformed; try next opener
+            start = text.find(opener, start + 1)
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -183,13 +225,14 @@ Only include layers that are genuinely useful. Respond with ONLY valid JSON arra
     try:
         llm = _build_llm()
         plan_text = _safe_invoke(llm, [{"role": "user", "content": plan_prompt}])
-        # Extract JSON array from the response
-        import re
-        json_match = re.search(r'\[.*?\]', plan_text, re.DOTALL)
-        if json_match:
-            plan = json.loads(json_match.group())
+        # Balanced-brace extractor — robust to LLM output that wraps the JSON
+        # in prose (the greedy `re.search` we used before could span multiple
+        # objects or fail on a trailing `]` in the explanation).
+        parsed = _extract_first_json(plan_text)
+        if isinstance(parsed, list):
+            plan = parsed
         else:
-            raise ValueError("No JSON array found in LLM response")
+            raise ValueError("LLM plan response did not contain a JSON array")
         llm_plan_used = True
     except Exception as exc:
         # Capture WHY the LLM plan was discarded so the audit trail shows it
@@ -297,14 +340,12 @@ Respond with JSON:
     try:
         llm = _build_llm()
         resp = _safe_invoke(llm, [{"role": "user", "content": prompt}])
-        import re
-        json_match = re.search(r'\{.*\}', resp, re.DOTALL)
-        if json_match:
-            parsed = json.loads(json_match.group())
+        parsed = _extract_first_json(resp)
+        if isinstance(parsed, dict):
             hypotheses = parsed.get("hypotheses", [])
             draft_advisory = parsed.get("draft_advisory", "")
         else:
-            raise ValueError("No JSON in hypothesis response")
+            raise ValueError("LLM hypothesis response did not contain a JSON object")
     except Exception as exc:
         error = f"HypothesisAgent LLM error: {exc}"
         draft_advisory = (
@@ -375,10 +416,8 @@ Respond with JSON only:
     try:
         llm = _build_llm()
         resp = _safe_invoke(llm, [{"role": "user", "content": critique_prompt}])
-        import re
-        json_match = re.search(r'\{.*?\}', resp, re.DOTALL)
-        if json_match:
-            cr = json.loads(json_match.group())
+        cr = _extract_first_json(resp)
+        if isinstance(cr, dict):
             grounded_ratio = float(cr.get("grounded_ratio", 0.5))
             citation_coverage = float(cr.get("citation_coverage", 0.0))
             llm_critique_used = True
@@ -510,7 +549,7 @@ def _persist_run(final: dict, fault_id: str) -> Path:
     """Save run JSON to disk for replay / debugging."""
     _OUT_DIR = _ROOT / "backend" / "diagnostics" / "multi_agent_runs"
     _OUT_DIR.mkdir(parents=True, exist_ok=True)
-    ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     out_path = _OUT_DIR / f"lg_run_{fault_id}_{ts}.json"
     try:
         with open(out_path, "w") as f:
@@ -594,7 +633,7 @@ def main():
 
     print(f"\n{'='*60}")
     print(f"  TEP Multi-Agent LangGraph RCA")
-    print(f"  Fault: {args.fault}  |  {datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')}")
+    print(f"  Fault: {args.fault}  |  {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}")
     print(f"{'='*60}\n")
 
     final = run_langgraph(args.fault, args.question, args.thread)

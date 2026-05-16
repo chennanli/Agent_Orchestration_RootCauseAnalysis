@@ -76,8 +76,11 @@ def _retrieve_wiki(query: str, **kwargs) -> List[Dict[str, Any]]:
             hits = sparse_search(query, k=max_results)
         else:
             hits = keyword_search(query, k=max_results)
-        # If something returned with an error marker, fall back to keyword
-        if hits and isinstance(hits[0], dict) and hits[0].get("error"):
+        # vector_knowledge contract is now: hits[] is always a list of
+        # well-shaped hit dicts. If a search backend returned []
+        # (e.g. embed failed), fall back to keyword so the layer is
+        # never empty for a non-empty query.
+        if not hits:
             hits = keyword_search(query, k=max_results)
     except Exception:
         # Hard fallback: legacy keyword path

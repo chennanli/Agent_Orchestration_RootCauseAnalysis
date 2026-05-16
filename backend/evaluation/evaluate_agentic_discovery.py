@@ -24,10 +24,9 @@ import os
 import re
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-
 # ---------------------------------------------------------------------------
 _ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(_ROOT))
@@ -252,7 +251,7 @@ def _build_markdown_report(records: List[Dict[str, Any]]) -> str:
 
     lines = [
         "# Agentic Discovery Evaluation Report",
-        f"**Generated:** {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}",
+        f"**Generated:** {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
         f"**Cases:** {len(set(r['fault_id'] for r in records))}",
         "",
         "## Summary Table",
@@ -302,7 +301,7 @@ def main():
     cases = _GOLDEN_CASES[: args.limit]
     print(f"\n{'='*60}")
     print(f"  Agentic Discovery Evaluation  |  {len(cases)} case(s)")
-    print(f"  {datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')}")
+    print(f"  {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}")
     print(f"{'='*60}\n")
 
     records: List[Dict[str, Any]] = []
@@ -381,7 +380,7 @@ def main():
         return round(sum(vals) / len(vals), 4) if vals else None
 
     summary = {
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
         "cases_run": len(cases),
         "nat_baseline": {
             "grounded_ratio_mean": _mean(nat_recs, "grounded_ratio"),

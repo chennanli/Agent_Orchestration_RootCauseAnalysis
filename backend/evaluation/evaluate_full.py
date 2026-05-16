@@ -32,10 +32,9 @@ import json
 import os
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Dict, List
-
 _ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(_ROOT))
 
@@ -438,7 +437,7 @@ def _build_markdown(records: List[Dict[str, Any]], summary: Dict[str, Any],
                     judge_models_used: List[str]) -> str:
     lines = [
         "# 4-Way Comparative Evaluation",
-        f"**Generated:** {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}",
+        f"**Generated:** {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
         f"**Total runs:** {len(records)}",
         f"**Held-out judge model(s):** {judge_models_used}",
         "",
@@ -495,7 +494,7 @@ def main():
 
     print(f"\n{'='*68}")
     print(f"  4-Way Eval | modes={args.modes} | {len(cases)} cases")
-    print(f"  {datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')}")
+    print(f"  {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}")
     print(f"{'='*68}\n")
 
     records: List[Dict[str, Any]] = []
@@ -522,7 +521,7 @@ def main():
     out_dir = _ROOT / "backend" / "evaluation" / "results"
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "full_eval_summary.json").write_text(json.dumps({
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
         "modes": args.modes,
         "n_cases": len(cases),
         "judge_models_used": judges,

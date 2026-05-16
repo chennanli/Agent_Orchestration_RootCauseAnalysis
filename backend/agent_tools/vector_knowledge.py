@@ -19,11 +19,14 @@ TEP_WIKI_SUBSTRATE=keyword (env var) restores the old keyword path.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+
+logger = logging.getLogger(__name__)
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -252,7 +255,13 @@ def build_or_load_index(force_rebuild: bool = False) -> Dict[str, Any]:
 # Search functions
 # ---------------------------------------------------------------------------
 def dense_search(query: str, k: int = 5) -> List[Dict[str, Any]]:
-    """Vector search via chroma + NIM embeddings."""
+    """Vector search via chroma + NIM embeddings.
+
+    Returns an empty list on embedding failure (e.g. NIM 401 / 429 / network).
+    Earlier versions returned `[{"error": ...}]` which callers downstream
+    treated as a "hit" with no text — the new contract is: hits[] is always
+    a list of well-shaped hit dicts; nothing else.
+    """
     _, col = _ensure_chroma()
     if col.count() == 0:
         return []
@@ -260,7 +269,8 @@ def dense_search(query: str, k: int = 5) -> List[Dict[str, Any]]:
         emb = _get_embedder()
         qv = emb.embed_query(query)
     except Exception as exc:
-        return [{"error": f"embed_failed: {exc}"}]
+        logger.warning("dense_search: embed failed (%s); returning []", exc)
+        return []
     res = col.query(query_embeddings=[qv], n_results=k)
     hits: List[Dict[str, Any]] = []
     if not res.get("ids") or not res["ids"][0]:

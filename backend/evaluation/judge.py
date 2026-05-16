@@ -127,10 +127,13 @@ Judge the grounding now. Respond with JSON only."""
                 {"role": "user", "content": user_prompt},
             ])
             content = resp.content if hasattr(resp, "content") else str(resp)
-            m = re.search(r"\{.*\}", content, re.DOTALL)
-            if not m:
+            # Balanced-brace JSON extractor; tolerates LLM output that wraps
+            # the JSON in prose (the greedy `re.search` we used before could
+            # span beyond one JSON object).
+            from backend.langgraph_rca import _extract_first_json  # noqa: WPS433
+            parsed = _extract_first_json(content)
+            if not isinstance(parsed, dict):
                 continue
-            parsed = json.loads(m.group())
             sup = int(parsed.get("supported_claims", 0))
             unsup = int(parsed.get("unsupported_claims", 0))
             total = sup + unsup
