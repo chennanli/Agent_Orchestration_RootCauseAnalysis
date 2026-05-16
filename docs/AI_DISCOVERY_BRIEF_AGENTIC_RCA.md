@@ -156,7 +156,7 @@ head-to-head number is quoted externally.
 * Larger evaluation set with synthetic case generation, plus a clean fresh-quota
   re-run so the held-out judge has comparator data for a real head-to-head.
 * GraphRAG-lite over variables, equipment, fault families, and knowledge chunks.
-* MCP server exposing the read-only tools to external MCP clients.
+* MCP server now ships (`backend/mcp_server.py`, see `docs/MCP_INTEGRATION.md`); Sprint-2 follow-up is adding MCP **resources** (fault catalog) and **prompts** (canned diagnose recipes) on top of the existing 11 tools.
 * A2A hardening: auth, more granular streaming events, and broader client
   compatibility tests.
 * Tracing / observability with OpenTelemetry-style spans for each graph node and

@@ -22,6 +22,15 @@ project uses [Semantic Versioning](https://semver.org/).
 - **A2A-style JSON-RPC surface** (`backend/a2a_router.py`): agent card at
   `/.well-known/agent-card.json`, `message/send` at `/a2a`, SSE at
   `/a2a/stream`. Includes a standalone wiki agent for delegation demos.
+- **MCP (Model Context Protocol) server** (`backend/mcp_server.py`): 11
+  read-only tools exposed over stdio / SSE / streamable-http for
+  consumption by any MCP host (Claude Desktop, Cline, Cursor). Tools
+  are: 6 deterministic (anomaly inspect/rank/window, wiki search,
+  similar-fault lookup, policy check), 4 evidence-layer wrappers
+  (wiki/field/policy/pattern-memory), and 1 high-level
+  `diagnose_with_langgraph` that runs the full 5-node orchestrator
+  end-to-end. Same backing functions as the A2A surface — adds another
+  transport, not new capability. See `docs/MCP_INTEGRATION.md`.
 - **Held-out LLM-as-judge** (`backend/evaluation/judge.py`):
   `meta/llama-3.1-8b-instruct` grades the grounding of advisories
   produced by the 70b generator — stricter than same-family critic.

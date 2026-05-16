@@ -11,6 +11,7 @@
 ![NVIDIA NeMo Agent Toolkit 1.6](https://img.shields.io/badge/NVIDIA%20NAT-1.6-76b900)
 ![NIM](https://img.shields.io/badge/NVIDIA%20NIM-llama--3.3--70b%20%C2%B7%20llama--3.1--8b%20%C2%B7%20nv--embedqa--e5--v5-76b900)
 ![A2A](https://img.shields.io/badge/A2A--style-JSON--RPC%20%2B%20agent%20card-2563eb)
+![MCP](https://img.shields.io/badge/MCP-stdio%20%2B%20sse-7c3aed)
 ![ChromaDB 1.x](https://img.shields.io/badge/ChromaDB-1.x-ff6f00)
 ![BM25](https://img.shields.io/badge/BM25-rank__bm25-555)
 ![Matrix Profile](https://img.shields.io/badge/Matrix%20Profile-stumpy-006400)
@@ -48,6 +49,7 @@ Each row is a concrete component wired into the prototype, not a list of words.
 | **LangChain** message types & tool abstractions | Underlying primitives for both LangGraph and the ReAct comparator | `backend/agent_tools/`, `backend/evaluation/evaluate_full.py` |
 | **NVIDIA NeMo Agent Toolkit (NAT)** | Baseline ReAct agent with 6 read-only tools — the original single-agent path, kept end-to-end | `backend/nat_runner.py`, `backend/nat_workflows/tep_rca_workflow.yml` |
 | **A2A-style JSON-RPC + agent card** | Inter-agent boundary: agent card at `/.well-known/agent-card.json`, `message/send` at `/a2a`, SSE at `/a2a/stream`. LangGraph can optionally delegate wiki retrieval through this boundary | `backend/a2a_router.py`, `docs/A2A_INTEGRATION.md` |
+| **Model Context Protocol (MCP)** | LLM host ↔ tool-server boundary; 11 read-only tools (6 deterministic + 4 evidence-layer wrappers + LangGraph orchestrator) exposed over stdio / SSE / streamable-http. Any MCP-aware host (Claude Desktop, Cline, Cursor) can drive the toolkit | `backend/mcp_server.py`, `docs/MCP_INTEGRATION.md` |
 | **ChromaDB + NVIDIA NIM embeddings** (`nv-embedqa-e5-v5`, 1024-d) | Dense vector retrieval over the governed wiki | `backend/agent_tools/vector_knowledge.py` |
 | **BM25** (`rank_bm25`) | Sparse keyword retrieval over the same corpus | `backend/agent_tools/vector_knowledge.py` |
 | **Reciprocal Rank Fusion (RRF)** | Hybrid retrieval fusing dense + sparse. **Recall@5 = 0.857, MRR = 1.000** on the hand-curated query set | `backend/agent_tools/vector_knowledge.py:hybrid_search` |
@@ -262,6 +264,7 @@ docs/
 
 - [`docs/AI_DISCOVERY_BRIEF_AGENTIC_RCA.md`](docs/AI_DISCOVERY_BRIEF_AGENTIC_RCA.md) — research write-up: hypothesis, architecture, evaluation, findings, limitations
 - [`docs/A2A_INTEGRATION.md`](docs/A2A_INTEGRATION.md) — A2A surface contract, demonstration commands, honest limits
+- [`docs/MCP_INTEGRATION.md`](docs/MCP_INTEGRATION.md) — MCP server (11 tools), Claude Desktop / Cline / Cursor config snippets, demo prompts
 - [`docs/DOCKER_SMOKE_TEST.md`](docs/DOCKER_SMOKE_TEST.md) — six-step verification that the post-MVP endpoints actually run inside the Docker image
 - [`CHANGELOG.md`](CHANGELOG.md) — release notes and **verified metrics per `v*` tag** (recall@5, MRR, grounded_ratio, completion rates)
 - Original YouTube walkthrough (fixed-RAG predecessor): <https://www.youtube.com/watch?v=_Sy__E4J0_Q>
