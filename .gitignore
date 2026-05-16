@@ -419,6 +419,8 @@ blog/*draft*.html
 # Local working files. Kept out of the public repo by intent.
 _CC_REPORT*.md
 *_CC_REPORT*.md
+_HANDOFF*.md
+*_HANDOFF*.md
 *hiring_manager*.md
 *interview*.md
 *INTERVIEW*.md

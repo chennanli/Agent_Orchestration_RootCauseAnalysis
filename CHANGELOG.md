@@ -6,14 +6,97 @@ project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-### Added
+### Added — AI Discovery Workbench (research-prototype layer over the existing Live Copilot)
+- **5-node LangGraph orchestrator** (`backend/langgraph_rca.py`): Signal →
+  Evidence → Hypothesis → Evaluator → Human Review, with bounded revision
+  loop and HITL gate. CLI + library + SSE-streaming HTTP API at
+  `backend/langgraph_api.py`.
+- **4 evidence layers** behind a single router (`backend/agent_tools/evidence_router.py`):
+  governed wiki, field-feedback (prior RCA notes), policy / constraint
+  catalog, time-series case memory.
+- **Hybrid wiki retrieval** (`backend/agent_tools/vector_knowledge.py`):
+  ChromaDB + NIM `nv-embedqa-e5-v5` dense embeddings + `rank_bm25` sparse,
+  fused with reciprocal-rank fusion.
+- **Time-series case memory** (`backend/agent_tools/pattern_tools.py`):
+  Matrix Profile AB-join via `stumpy`; cross-fault-boundary masking.
+- **A2A-style JSON-RPC surface** (`backend/a2a_router.py`): agent card at
+  `/.well-known/agent-card.json`, `message/send` at `/a2a`, SSE at
+  `/a2a/stream`. Includes a standalone wiki agent for delegation demos.
+- **Held-out LLM-as-judge** (`backend/evaluation/judge.py`):
+  `meta/llama-3.1-8b-instruct` grades the grounding of advisories
+  produced by the 70b generator — stricter than same-family critic.
+- **4-way comparator harness** (`backend/evaluation/evaluate_full.py`):
+  `tools_only` / `nat_react` / `langchain_react` / `langgraph_multi` on
+  the same prompts with the same held-out judge.
+- **Synthetic case generator** (`backend/evaluation/synth_cases.py`):
+  LLM-generated diagnostic prompts conditioned per fault id.
+- **React `/discovery` page** (`frontend/src/pages/DiscoveryPage.tsx`):
+  live LangGraph pipeline + evidence-by-layer panel + hypothesis ranking
+  + evaluator verdict, all streamed over SSE.
+- `docs/DOCKER_SMOKE_TEST.md` — 6-step verification that the Docker image
+  actually runs all post-MVP endpoints.
+
+### Verified metrics (smoke-test scale, n=3 + n=5; not a benchmark)
+
+JSON sources: `backend/evaluation/results/*.json`.
+
+| Subject | Number | Source |
+|---|---|---|
+| Hybrid retrieval, recall@5 | **0.857** | `retrieval_summary.json` |
+| Hybrid retrieval, MRR | **1.000** | `retrieval_summary.json` |
+| Sparse-only recall@5 / MRR | 0.857 / 0.929 | `retrieval_summary.json` |
+| Dense-only recall@5 / MRR | 0.714 / 1.000 | `retrieval_summary.json` |
+| Keyword baseline recall@5 / MRR | 0.643 / 0.821 | `retrieval_summary.json` |
+| LangGraph grounded_ratio (same-family critic, n=3) | **0.583** | `discovery_summary.json` |
+| NAT baseline grounded_ratio (n=3) | 0.167 | `discovery_summary.json` |
+| LangGraph grounded_ratio (held-out 8b judge, n=5) | ~0.2 – 0.4 (run-noisy) | `full_eval_summary.json` |
+| LangGraph mean runtime (n=3) | 9.4 s | `discovery_summary.json` |
+| NAT mean runtime (n=3) | 1161 s | `discovery_summary.json` |
+| Matrix Profile top-1 on fault1 | dist = 4.58 (no strong analog) | CLI |
+
+### Security
+- `backend/app.py` CORS no longer includes `"*"` in `allow_origins`; only
+  enumerated dev ports (override via `TEP_CORS_EXTRA_ORIGINS`).
+- SSE responses use a shared `_apply_sse_cors()` helper that echoes the
+  request origin only if in the allowlist (was hardcoded `"*"`).
+- `backend/app.py __main__` binds `127.0.0.1` by default; `TEP_BIND_ALL=1`
+  opts into all-interfaces exposure (set in `docker-compose.yml`).
+- `docker-compose.yml` publishes on `127.0.0.1:PORT` by default;
+  `COMPOSE_HOST_BIND=0.0.0.0` opts in to LAN exposure.
+
+### Eval-harness correctness
+- `_run_langchain_react` and `_run_nat_react` in `evaluate_full.py` now
+  collect each comparator's actual tool outputs and pass them to the
+  judge symmetrically (was: comparator got `[]` while langgraph got real
+  evidence — unfair grading).
+- `_run_tools_only` reads `top_variables` (was reading a wrong key,
+  producing empty advisories).
+- `evidence_hit_rate` denominator uses `len(_EVIDENCE_LAYERS)` from
+  `langgraph_rca` (was hardcoded 3.0).
+- `evidence_router._retrieve_field_feedback` reads `matches` (the actual
+  key returned by `find_similar_faults`; was returning 0 hits).
+- `pattern_tools.match_historical_patterns` masks windows that straddle
+  two adjacent fault CSVs in the archive (eliminates bogus top-1 matches).
+
+### Docker / packaging
+- `requirements.txt` adds the AI Discovery runtime: `langgraph`,
+  `langgraph-checkpoint-sqlite`, `langchain`,
+  `langchain-nvidia-ai-endpoints`, `chromadb`, `rank-bm25`, `stumpy`,
+  `typing-extensions`.
+- `Dockerfile.backend` installs both `requirements.txt` and
+  `requirements-nat.txt` so the NAT path works inside the image.
+- `.dockerignore` re-includes the Linux Fortran extension and the
+  governed-wiki markdown corpus (both were being stripped from the
+  build context by generic ignore rules).
+
+### Existing additions (carried from earlier in `[Unreleased]`)
 - Frontend test suite (`vitest` + Testing Library) with 10 baseline tests
   covering the agent API client and the BakeoffCard component.
-- CI now runs `npm test` on every push.
-- CI now runs `docker compose config --quiet` to validate the compose file
-  + Dockerfile paths on every push, catching wiring typos before release.
-- `release.yml` now creates a GitHub Release entry with auto-generated
-  notes on every `v*` tag push (was: tag only, no Release page).
+- CI runs `npm test` on every push.
+- CI runs `docker compose config --quiet` to validate the compose file
+  + Dockerfile paths on every push.
+- `release.yml` creates a GitHub Release entry with auto-generated notes
+  on every `v*` tag push.
 
 ## [0.3.1] — 2026-05-12
 
