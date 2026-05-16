@@ -214,6 +214,22 @@ Both run against the same Fortran sim, the same PCA detector, and the same gover
 
 ---
 
+## Sample diagnosis output
+
+The shape an operator actually sees from the Discovery Workbench: a deterministic signal, retrieved evidence broken out by layer, **three ranked candidate root causes with explicit confidence**, an evaluator verdict, and a policy-checked advisory. Full captured run + per-node timings + raw JSON: **[`docs/SAMPLE_DIAGNOSIS_FAULT4.md`](docs/SAMPLE_DIAGNOSIS_FAULT4.md)**.
+
+Excerpt — Hypothesis node on `fault4` (IDV-4, reactor coolant inlet step), 39.5 s end-to-end, NIM `llama-3.3-70b-instruct` generator, evaluator `acceptable: True`, 0 revisions, no HITL escalation:
+
+> **Hypothesis 1 — `rank: 1`, `confidence: high`** — The increase in **Reactor coolant load (XMV_10)** is the primary driver of fault4.
+>
+> **Hypothesis 2 — `rank: 2`, `confidence: medium`** — The flat **Reactor Temperature (XMEAS_9)** may be contributing to fault4, potentially as a result of the increased Reactor coolant load.
+>
+> **Hypothesis 3 — `rank: 3`, `confidence: low`** — Other variables such as **Recycle Flow (XMEAS_5)**, **Product Sep Underflow (XMEAS_14)**, and **Component B to Reactor (XMEAS_24)** may be playing a secondary role in fault4.
+
+The provider plug at the Hypothesis node is swappable — captured runs in `backend/diagnostics/multi_agent_runs/` use NIM today; the Live Copilot path additionally exposes Gemini, Anthropic, and a local-LM-Studio fallback (`backend/multi_llm_client.py`, `/explain/{provider}`). The output **shape** — 3 ranked hypotheses + evaluator verdict + advisory — is invariant across providers.
+
+---
+
 ## Tool surface (shared)
 
 Each tool is read-only. Implemented in `backend/agent_tools/`.
@@ -273,6 +289,13 @@ docs/
 - Production-hardened deployment. The A2A surface has no auth or rate limit; default bind is `127.0.0.1`; `TEP_BIND_ALL=1` opts into multi-interface exposure.
 - Statistically meaningful benchmarks. Eval scale is 3 discovery cases + 5 full-eval cases — smoke-test scale. The brief is explicit about this.
 - Real-process data. TEP is a controlled chemical-process surrogate, not field data.
+
+---
+
+## Sample run output
+
+- [`docs/SAMPLE_DIAGNOSIS_FAULT4.md`](docs/SAMPLE_DIAGNOSIS_FAULT4.md) — full captured run on `fault4` with all 5 nodes broken out, 3 ranked hypotheses, evaluator + HITL state, and final advisory.
+- [`docs/sample_runs/lg_run_fault4_sample.json`](docs/sample_runs/lg_run_fault4_sample.json) — raw JSON of the same run for machine inspection.
 
 ---
 

@@ -1,0 +1,322 @@
+{
+  "fault_id": "fault4",
+  "question": "Diagnose fault4. Which variable is driving it?",
+  "anomaly_snapshot": {
+    "fault_id": "fault4",
+    "csv_file": "/Users/chennanMac_mini_SE/Desktop/LLM_Project/TEP_demo-main/frontend/public/fault4.csv",
+    "anomaly_index": 20,
+    "t2_statistic": 179.73161703714817,
+    "t2_threshold": 55.0,
+    "is_anomaly": true,
+    "sample_count": 500,
+    "plain_explanation": "Deterministic detector first sees 20 consecutive anomalous samples at row 20. T2 statistic at that row is 179.73, versus threshold 55.0. Total rows analysed: 500."
+  },
+  "ranked_variables": [
+    {
+      "variable": "Reactor coolant load",
+      "tag": "XMV_10",
+      "label": "XMV_10 (Reactor coolant load)",
+      "kind": "manipulated",
+      "t2_contribution": 84.57384550679478,
+      "mean_change_pct": 1.235,
+      "direction": "increasing"
+    },
+    {
+      "variable": "Reactor Temperature",
+      "tag": "XMEAS_9",
+      "label": "XMEAS_9 (Reactor Temperature)",
+      "kind": "measurement",
+      "t2_contribution": 61.421077878506665,
+      "mean_change_pct": 0.006,
+      "direction": "flat"
+    },
+    {
+      "variable": "Recycle Flow",
+      "tag": "XMEAS_5",
+      "label": "XMEAS_5 (Recycle Flow)",
+      "kind": "measurement",
+      "t2_contribution": 11.561120741260982,
+      "mean_change_pct": -0.075,
+      "direction": "flat"
+    },
+    {
+      "variable": "Product Sep Underflow",
+      "tag": "XMEAS_14",
+      "label": "XMEAS_14 (Product Sep Underflow)",
+      "kind": "measurement",
+      "t2_contribution": 11.03663736842674,
+      "mean_change_pct": 0.243,
+      "direction": "flat"
+    },
+    {
+      "variable": "Component B to Reactor",
+      "tag": "XMEAS_24",
+      "label": "XMEAS_24 (Component B to Reactor)",
+      "kind": "measurement",
+      "t2_contribution": 8.994879327599985,
+      "mean_change_pct": 0.121,
+      "direction": "flat"
+    },
+    {
+      "variable": "Component F in Purge",
+      "tag": "XMEAS_34",
+      "label": "XMEAS_34 (Component F in Purge)",
+      "kind": "measurement",
+      "t2_contribution": 8.756879711082261,
+      "mean_change_pct": -0.233,
+      "direction": "flat"
+    },
+    {
+      "variable": "Component E in Product",
+      "tag": "XMEAS_38",
+      "label": "XMEAS_38 (Component E in Product)",
+      "kind": "measurement",
+      "t2_contribution": 5.220552316196045,
+      "mean_change_pct": -0.197,
+      "direction": "flat"
+    },
+    {
+      "variable": "Component D in Purge",
+      "tag": "XMEAS_32",
+      "label": "XMEAS_32 (Component D in Purge)",
+      "kind": "measurement",
+      "t2_contribution": 4.99599258067425,
+      "mean_change_pct": -1.819,
+      "direction": "decreasing"
+    }
+  ],
+  "evidence_by_layer": {
+    "wiki": [
+      {
+        "id": "TEP McAvoy.md::21292-21948",
+        "source": "TEP McAvoy.md",
+        "section": "Page 8",
+        "text": "ot change\n\nthe basic methodology. Also, it is possible that if too\n\nmany variables are specified as definitely having to\n\nbe controlled, one may not get to a solution. In this\n\ncase the specification on variables that definitely\n\nhave to be controlled has to be relaxed. By specify-\n\ning that 4 variables must be controlled, the number\n\nof RGAs that must be considered is relatively small.\n\nThere are 3 6 x 6 cases, 18 5 x 5 cases and 15 4 x 4\n\ncases, giving a total of 36 cases. In addition to using\n\nthe Niederlinski Index to rule out unstable pairings,\n\nphysical arguments can be used as well. For exam-\n\nple, one would not pair the D-feed flow with the",
+        "score": 0.01639344262295082,
+        "rank": 1,
+        "substrate": "hybrid",
+        "rrf_score": 0.01639344262295082,
+        "substrates": [
+          "dense"
+        ]
+      },
+      {
+        "id": "chemical_process_equipment_manu.md::1028681-1029301",
+        "source": "chemical_process_equipment_manu.md",
+        "section": "Page 446",
+        "text": "projects outward from the housing. This\n\narrangement provides a signal that is proportional to the torque imposed by the\n\nconveyor. If the shaft is held rotational (for example, by a torque overload release\n\ndevice or a shear pin), the relative conveyor speed is equivalent to the bowl rotative\n\nspeed divided by the gear box ratio. Variable differential speeds can be obtained by\n\ndriving the pinion shaft with an auxiliary power supply or by allowing it to slip\n\nforward against a controlled breaking action. Both arrangements are employed\n\nwhen processing soft solids or when maximum retention times are needed on the",
+        "score": 0.01639344262295082,
+        "rank": 2,
+        "substrate": "hybrid",
+        "rrf_score": 0.01639344262295082,
+        "substrates": [
+          "sparse"
+        ]
+      },
+      {
+        "id": "Downs & Vogel.md::18544-19190",
+        "source": "Downs & Vogel.md",
+        "section": "Page 6",
+        "text": "denser cooling water inlet temperature\n\nReaction kinetics\n\nType\n\nstep\n\nstep\n\nstep\n\nstep\n\nSkP\n\nSkP\n\nS=P\n\nRandom variation\n\nRandom variation\n\nRandom variation\n\nRandom variation\n\nRandom variation\n\nSlow drift\n\nIDV ii4j\n\nReactor cooling water valve\n\nSticking\n\nIDV (15)\n\nCondenser cooling water valve\n\nSticking\n\nIDV (16)\n\nUnknown\n\nUnknown\n\nIDV (17)\n\nUnknown\n\nUnknown\n\nIDV (18)\n\nUnknown\n\nUnknown\n\nIDV (19)\n\nUnknown\n\nUnknown\n\nIDV (20)\n\nUnknown\n\nUnknown\n\nDisturbances 14-20 should be used in conjunction with another disturbance from this table or a setpoinc change.\n\nTo realize the full ef&zt of these disturbances, we sumt\n\na simulation time of 24-48 h.",
+        "score": 0.016129032258064516,
+        "rank": 3,
+        "substrate": "hybrid",
+        "rrf_score": 0.016129032258064516,
+        "substrates": [
+          "dense"
+        ]
+      },
+      {
+        "id": "chemical_process_equipment_manu.md::625217-625847",
+        "source": "chemical_process_equipment_manu.md",
+        "section": "Page 264",
+        "text": "s are therefore introduced by means of\n\nwhich the rate of absorption across both films together may be calculated. These\n\noverall coefficients can be defined in the following two ways depending upon the\n\nmanner in which the overall driving force is expressed: (1) On the gas-phase basis\n\n- the overall driving force is then the difference between the actual partial pressure\n\nof the soluble gas pg and the partial pressure pi corresponding to equilibrium with\n\na liquid of concentration c,; (2) On the liquid-phase basis - the overall driving force\n\nis then the difference between the concentration c, corresponding to equilibrium",
+        "score": 0.016129032258064516,
+        "rank": 4,
+        "substrate": "hybrid",
+        "rrf_score": 0.016129032258064516,
+        "substrates": [
+          "sparse"
+        ]
+      }
+    ],
+    "field_feedback": [
+      {
+        "source": "LLM_RCA_Results/Gemini_1217.md",
+        "fault_family": "historical RCA report",
+        "score": 0.012,
+        "text": "# GEMINI Root Cause Analysis Log  **Date**: 2025-12-17 **Model**: gemini **Auto-generated**: True  ---  ## Analysis at 2025-12-17T22:24:10.562812  **Duration**: 53.59513187408447s **Status**: success **Top Features**: E Feed, D Feed, Stripper Pressure, Reactor Pressure, Product Sep Pressure, Compres",
+        "evidence_source": "backend/LLM_RCA_Results or RCA_Results"
+      },
+      {
+        "source": "LLM_RCA_Results/Gemini_0407.md",
+        "fault_family": "historical RCA report",
+        "score": 0.011,
+        "text": "# GEMINI Root Cause Analysis Log  **Date**: 2026-04-07 **Model**: gemini **Auto-generated**: True  ---  ## Analysis at 2026-04-07T20:11:59.102004  **Duration**: 44.91211295127869s **Status**: success **Top Features**: E Feed, D Feed, Stripper Steam Flow, Separator liquid load, Product Sep Underflow,",
+        "evidence_source": "backend/LLM_RCA_Results or RCA_Results"
+      },
+      {
+        "source": "LLM_RCA_Results/Gemini_0124.md",
+        "fault_family": "historical RCA report",
+        "score": 0.007,
+        "text": "# GEMINI Root Cause Analysis Log  **Date**: 2026-01-24 **Model**: gemini **Auto-generated**: True  ---  ## Analysis at 2026-01-24T12:15:34.524149  **Duration**: 39.62026405334473s **Status**: success **Top Features**: Stripper Pressure, D Feed, Reactor Pressure, Product Sep Pressure, Compressor Work",
+        "evidence_source": "backend/LLM_RCA_Results or RCA_Results"
+      }
+    ],
+    "pattern_memory": [
+      {
+        "source": "fault11",
+        "score": 0.6569438969911969,
+        "distance": 0.5222,
+        "text": "fault11 window [0:30]: distance=0.522 on vars ['A Feed', 'D Feed', 'E Feed']",
+        "known_pattern": "reactor cooling water inlet temperature (random variation)",
+        "matched_range": [
+          0,
+          30
+        ],
+        "linked_notes": []
+      },
+      {
+        "source": "fault8",
+        "score": 0.648971380362126,
+        "distance": 0.5409,
+        "text": "fault8 window [0:30]: distance=0.541 on vars ['A Feed', 'D Feed', 'E Feed']",
+        "known_pattern": "A/B/C feed composition (random variation)",
+        "matched_range": [
+          0,
+          30
+        ],
+        "linked_notes": []
+      },
+      {
+        "source": "fault0",
+        "score": 0.6488450558006749,
+        "distance": 0.5412,
+        "text": "fault0 window [0:30]: distance=0.541 on vars ['A Feed', 'D Feed', 'E Feed']",
+        "known_pattern": "normal steady-state operation",
+        "matched_range": [
+          0,
+          30
+        ],
+        "linked_notes": []
+      },
+      {
+        "source": "fault13",
+        "score": 0.6488450558006749,
+        "distance": 0.5412,
+        "text": "fault13 window [0:30]: distance=0.541 on vars ['A Feed', 'D Feed', 'E Feed']",
+        "known_pattern": "reaction kinetics slow drift",
+        "matched_range": [
+          0,
+          30
+        ],
+        "linked_notes": []
+      },
+      {
+        "source": "fault10",
+        "score": 0.6488450558006749,
+        "distance": 0.5412,
+        "text": "fault10 window [0:30]: distance=0.541 on vars ['A Feed', 'D Feed', 'E Feed']",
+        "known_pattern": "C feed temperature (random variation)",
+        "matched_range": [
+          0,
+          30
+        ],
+        "linked_notes": []
+      }
+    ]
+  },
+  "hypotheses": [
+    {
+      "rank": 1,
+      "statement": "The increase in Reactor coolant load is the primary driver of fault4.",
+      "supporting_evidence_ids": [
+        "TOP ANOMALOUS VARIABLES"
+      ],
+      "confidence": "high"
+    },
+    {
+      "rank": 2,
+      "statement": "The flat Reactor Temperature may be contributing to fault4, potentially as a result of the increased Reactor coolant load.",
+      "supporting_evidence_ids": [
+        "TOP ANOMALOUS VARIABLES"
+      ],
+      "confidence": "medium"
+    },
+    {
+      "rank": 3,
+      "statement": "Other variables such as Recycle Flow, Product Sep Underflow, and Component B to Reactor may be playing a secondary role in fault4.",
+      "supporting_evidence_ids": [
+        "TOP ANOMALOUS VARIABLES"
+      ],
+      "confidence": "low"
+    }
+  ],
+  "draft_advisory": "The current fault4 situation appears to be driven by an increase in Reactor coolant load, which may be causing a cascade of effects on other variables. It is recommended to investigate the cause of this increase and take corrective action to prevent further escalation. Additionally, monitoring of Reactor Temperature and other affected variables is advised to ensure the situation does not worsen.",
+  "evaluation": {
+    "policy": {
+      "is_advisory_safe": true,
+      "forbidden_phrases": [],
+      "overclaims": []
+    },
+    "grounded_ratio": 0.5,
+    "citation_coverage": 0.0,
+    "acceptable": true,
+    "feedback": "Advisory looks good.",
+    "llm_critique_used": false
+  },
+  "revision_count": 0,
+  "final_advisory": "The current fault4 situation appears to be driven by an increase in Reactor coolant load, which may be causing a cascade of effects on other variables. It is recommended to investigate the cause of this increase and take corrective action to prevent further escalation. Additionally, monitoring of Reactor Temperature and other affected variables is advised to ensure the situation does not worsen.",
+  "hitl_required": false,
+  "audit_trail": [
+    {
+      "node": "SignalAgent",
+      "ts": "2026-05-16T07:18:54.008562",
+      "anomaly_detected": null,
+      "top_vars": [
+        "Reactor coolant load",
+        "Reactor Temperature",
+        "Recycle Flow"
+      ],
+      "latency_ms": 11
+    },
+    {
+      "node": "EvidenceAgent",
+      "ts": "2026-05-16T07:18:54.810079",
+      "calls_used": 3,
+      "llm_plan_used": false,
+      "layers_hit": [
+        "wiki",
+        "field_feedback",
+        "pattern_memory"
+      ],
+      "total_hits": 12,
+      "latency_ms": 801
+    },
+    {
+      "node": "HypothesisAgent",
+      "ts": "2026-05-16T07:19:33.316255",
+      "revision": 0,
+      "hypothesis_count": 3,
+      "latency_ms": 38506,
+      "error": null
+    },
+    {
+      "node": "EvaluatorAgent",
+      "ts": "2026-05-16T07:19:33.497757",
+      "acceptable": true,
+      "policy_ok": true,
+      "grounded_ratio": 0.5,
+      "llm_critique_used": false,
+      "latency_ms": 181
+    },
+    {
+      "node": "HumanReviewGate",
+      "ts": "2026-05-16T07:19:33.498555",
+      "acceptable": true,
+      "revision_count": 0,
+      "decision": "accept"
+    }
+  ],
+  "_runtime_seconds": 39.52
+}
