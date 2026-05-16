@@ -55,23 +55,168 @@ for frontier agentic AI patterns:
   RAG, field feedback (prior RCA notes), policy / constraint catalog,
   time-series case memory via Matrix Profile (single entry point in
   `backend/agent_tools/evidence_router.py`)
+- **Hybrid wiki retrieval** — NIM dense (`nv-embedqa-e5-v5`) + BM25 sparse,
+  fused with RRF (`backend/agent_tools/vector_knowledge.py`). Recall@5 =
+  0.857, MRR = 1.000 on the 7-query hand-curated set.
+- **A2A-style JSON-RPC surface** with an agent card at
+  `/.well-known/agent-card.json` and `message/send` at `/a2a`
+  (`backend/a2a_router.py`). Research prototype, not production-hardened.
 - **Evaluation harness** comparing NAT single-agent baseline vs LangGraph
-  multi-evidence: grounding ratio, evidence layer utilization, revision
-  count, latency, end-to-end completion rate
+  multi-evidence vs unstructured LangChain ReAct vs deterministic tools-only,
+  with a held-out 8b judge for grounded_ratio.
 
-Run:
+### Run from the CLI
 
 ```bash
 python backend/langgraph_rca.py --fault fault1
 python backend/evaluation/evaluate_agentic_discovery.py --limit 3
+python backend/evaluation/evaluate_retrieval.py
+python backend/evaluation/evaluate_full.py --limit 5
 ```
 
+### Run in the UI
+
+The new **Discovery** tab in the sidebar (`/discovery`) is a live React surface
+for the LangGraph orchestrator. It:
+
+- streams each node's completion over SSE (POST `/api/discovery/diagnose` →
+  GET `/api/discovery/runs/{id}/stream`)
+- highlights the currently-active node in a 5-step pipeline header
+- fills three evidence columns (wiki / field_feedback / pattern_memory) as
+  the EvidenceAgent retrieves
+- ranks the HypothesisAgent's 1–3 candidate root causes
+- shows the Evaluator's `policy_pass`, `grounded_ratio`, `revisions`, and
+  the HITL banner if the gate fires
+- emits an audit-trail line per node, including `plan_parse_error` if the
+  LLM's plan was malformed and fell through to the default
+
+#### Capturing screenshots for the README
+
+Once the backend + frontend are running (`docker compose up --build` or the
+manual three-terminal flow below), navigate to <http://localhost:5173/discovery>,
+pick `fault1`, hit **Run discovery**, and capture screenshots into
+`docs/assets/` at these four states:
+
+| State | Suggested filename | What to capture |
+|---|---|---|
+| 1. Idle | `tep_discovery_idle.png` | Page loaded, pipeline all greyed out, `phase: idle` |
+| 2. EvidenceAgent firing | `tep_discovery_evidence.png` | Pipeline highlights `Evidence` violet, the wiki / field_feedback / pattern_memory columns populated, audit-trail entry visible |
+| 3. HypothesisAgent + Evaluator | `tep_discovery_eval.png` | Hypotheses populated on the left, Evaluator panel showing `grounded_ratio` progress bar + policy badge |
+| 4. Final advisory | `tep_discovery_final.png` | `phase: done`, runtime badge, full audit trail, final advisory text rendered |
+
+Until those PNGs are captured, this section intentionally has no embedded
+images — the CLI path (`python backend/langgraph_rca.py …`) is the
+ground-truth reproducible run.
+
 Writeup: [`docs/AI_DISCOVERY_BRIEF_AGENTIC_RCA.md`](docs/AI_DISCOVERY_BRIEF_AGENTIC_RCA.md).
+A2A note: [`docs/A2A_INTEGRATION.md`](docs/A2A_INTEGRATION.md).
 Local follow-up drafts and private review notes are intentionally ignored.
 
 ---
 
 ## Architecture
+
+### System overview (the whole project, at a glance)
+
+The diagram below answers the question *"what is in this repo and how do the
+pieces fit together?"* — shared deterministic substrate at the bottom, two
+agent orchestration paths in the middle, two corresponding UI tabs at the
+top, the held-out evaluation harness on the side, and the A2A boundary as a
+separate external surface. The narrower **Live Copilot click flow** is
+diagrammed in the next subsection.
+
+```mermaid
+flowchart TB
+    classDef data fill:#0e1117,stroke:#5b6470,color:#e6edf3,font-size:11px
+    classDef tool fill:#1a2540,stroke:#1f6feb,color:#e6edf3,font-size:11px
+    classDef agent fill:#2a1f54,stroke:#a371f7,color:#fff,font-size:11px
+    classDef ui fill:#1c3d2a,stroke:#3fb950,color:#fff,font-size:11px
+    classDef ext fill:#3d2a14,stroke:#d29922,color:#fff,font-size:11px
+    classDef eval fill:#3d1c1c,stroke:#f85149,color:#fff,font-size:11px
+
+    %% --- DATA SUBSTRATE -----------------------------------------------------
+    subgraph DATA["Data substrate (read-only)"]
+        SIM["Fortran TEP sim<br/>temain_mod.so · unified_console.py"]:::data
+        FAULTS["21 fault CSVs<br/>backend/data + frontend/public"]:::data
+        WIKI["Governed wiki<br/>RAG/converted_markdown/*.md"]:::data
+        RCA["Field feedback<br/>backend/LLM_RCA_Results/ + RCA_Results/"]:::data
+    end
+
+    %% --- BACKEND ZONES ------------------------------------------------------
+    subgraph BACKEND["Backend · FastAPI on :8000  (backend/app.py)"]
+        direction TB
+        subgraph DET["Deterministic (no LLM)"]
+            PCA["PCA / T² detector<br/>(arms Diagnose Now)"]:::tool
+            TOOLS6["6 read-only tools<br/>inspect / rank / search /<br/>window / similar / policy"]:::tool
+        end
+        subgraph RET["Retrieval (4 evidence layers)"]
+            WIKI_R["wiki — hybrid<br/>NIM dense + BM25 + RRF<br/>(vector_knowledge.py)"]:::tool
+            FIELD_R["field_feedback<br/>(history_tools)"]:::tool
+            POL_R["policy catalog<br/>(policy_tools)"]:::tool
+            MP_R["pattern_memory<br/>Matrix Profile<br/>(pattern_tools.py)"]:::tool
+        end
+        subgraph ORCH["Agent orchestrators"]
+            NAT["NAT ReAct agent<br/>single agent · 6 tools<br/>(nat_runner.py)"]:::agent
+            LG["LangGraph 5-node<br/>Signal → Evidence → Hypothesis →<br/>Evaluator → Human Review<br/>(langgraph_rca.py)"]:::agent
+        end
+        A2A["A2A surface<br/>/.well-known/agent-card.json<br/>JSON-RPC /a2a<br/>(a2a_router.py)"]:::agent
+    end
+
+    %% --- FRONTEND ----------------------------------------------------------
+    subgraph FRONTEND["Frontend · React/Mantine on :5173"]
+        LC["/  ·  Live Copilot tab<br/>Diagnose Now → NAT trace"]:::ui
+        DISC["/discovery  ·  Discovery tab<br/>5-node graph live → evidence<br/>columns → hypotheses → evaluator"]:::ui
+    end
+
+    %% --- EVAL HARNESS ------------------------------------------------------
+    EVAL["Evaluation harness<br/>discovery / retrieval / 4-way full_eval<br/>held-out 8b judge for grounded_ratio<br/>(backend/evaluation/*)"]:::eval
+
+    %% --- EXTERNAL ---------------------------------------------------------
+    NIM["NVIDIA NIM (external)<br/>llama-3.3-70b · llama-3.1-8b judge<br/>nv-embedqa-e5-v5"]:::ext
+    EXTAGENT["External agent<br/>(any A2A client)"]:::ext
+
+    %% --- EDGES ------------------------------------------------------------
+    SIM --> PCA
+    SIM --> FAULTS
+    FAULTS --> TOOLS6
+    FAULTS --> MP_R
+    WIKI --> WIKI_R
+    RCA --> FIELD_R
+
+    PCA --> NAT
+    TOOLS6 --> NAT
+    WIKI_R --> NAT
+    FIELD_R --> NAT
+
+    TOOLS6 --> LG
+    WIKI_R --> LG
+    FIELD_R --> LG
+    POL_R --> LG
+    MP_R --> LG
+
+    NAT -. ReAct loop .-> NIM
+    LG  -. per-node LLM .-> NIM
+    EVAL -. held-out judge .-> NIM
+
+    NAT --> LC
+    LG --> DISC
+    LG --> A2A
+    EXTAGENT --> A2A
+
+    NAT --> EVAL
+    LG  --> EVAL
+```
+
+**How to read it:**
+
+* **Bottom (grey):** the deterministic substrate — the Fortran simulator, the 21 fault snapshots, the governed wiki markdown, the prior RCA notes. Nothing here calls an LLM.
+* **Middle (blue):** the deterministic tools + retrieval layer. The PCA/T² detector and the 6 read-only tools are the *original* substrate; the 4 evidence layers (wiki hybrid, field-feedback, policy catalog, Matrix Profile case memory) are the *research-extension* substrate. All four are wired to the LangGraph orchestrator; the original NAT path only sees `wiki + field_feedback`.
+* **Middle (violet):** two agent orchestrators, both consuming the same substrate. NAT is a single ReAct agent; LangGraph is a 5-node state machine with a critic-as-node and a bounded revision loop. The A2A surface is a separate JSON-RPC boundary so external agents can call into the LangGraph orchestrator without coupling to its implementation.
+* **Top (green):** the React UI. The original Live Copilot tab consumes NAT; the new `/discovery` tab consumes LangGraph and renders its per-node progress, evidence-by-layer, hypothesis ranking, and evaluator verdict.
+* **Side (red):** the evaluation harness. Runs both orchestrators on the same set of golden cases and grades the resulting advisories with a *held-out* (different model family) judge, so the comparison numbers aren't self-flattering.
+* **External (amber):** NVIDIA NIM hosts the LLMs; any A2A-speaking agent can call in through the agent-card boundary.
+
+The legacy NAT path is preserved end-to-end; the Discovery path is a parallel research surface that reuses the same substrate.
 
 ### End-to-end data + agent flow
 

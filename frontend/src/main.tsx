@@ -9,6 +9,7 @@ import AgentRunPage from "./pages/AgentRunPage.tsx";
 import LLMWikiPage from "./pages/LLMWikiPage.tsx";
 import EvaluationPage from "./pages/EvaluationPage.tsx";
 import MiscPage from "./pages/MiscPage.tsx";
+import DiscoveryPage from "./pages/DiscoveryPage.tsx";
 import QuestionsPage from "./pages/ChatPage.tsx";
 import HistoryPage from "./pages/FaultReports.tsx";
 import DataPage from "./pages/PlotPage.tsx";
@@ -38,6 +39,7 @@ const router = createBrowserRouter([
       { path: "live", element: <LiveProcessPage /> },
       { path: "agent", element: <AgentRunPage /> },
       { path: "wiki", element: <LLMWikiPage /> },
+      { path: "discovery", element: <DiscoveryPage /> },
       { path: "eval", element: <EvaluationPage /> },
       { path: "misc", element: <MiscPage /> },
     ],

@@ -416,9 +416,7 @@ frontend/.vite/
 blog/human_in_loop_governed_wiki_agent_orchestration_draft.html
 blog/*draft*.html
 
-# Interview / follow-up / private review materials. These files can be useful
-# locally while preparing a portfolio narrative, but they should not be pushed
-# to a public repo or mixed into normal git staging.
+# Local working files. Kept out of the public repo by intent.
 _CC_REPORT*.md
 *_CC_REPORT*.md
 *hiring_manager*.md
@@ -474,3 +472,13 @@ backend/data/embeddings/
 # doesn't carry stale numbers across re-runs.
 backend/evaluation/results/*.json
 backend/evaluation/results/*.md
+
+# Local presentation drafts (not for public repo).
+docs/ppt/
+scripts/patch_ppt_deck.py
+
+# Local-only docs and blog drafts. The canonical public docs are README.md,
+# docs/AI_DISCOVERY_BRIEF_AGENTIC_RCA.md, and docs/A2A_INTEGRATION.md.
+docs/NAT_AGENTIC_RCA_ARCHITECTURE.md
+blog/tep_nat_agentic_rca_blog.md
+blog/tep_nat_agentic_rca_blog.html

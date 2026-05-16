@@ -14,6 +14,7 @@ import {
   IconBolt,
   IconBriefcase,
   IconClipboardCheck,
+  IconNetwork,
 } from "@tabler/icons-react";
 import { Outlet, NavLink as RouterNavLink, useLocation } from "react-router-dom";
 
@@ -25,6 +26,11 @@ import { Outlet, NavLink as RouterNavLink, useLocation } from "react-router-dom"
 const NAV = [
   { to: "/", label: "Live Copilot", icon: IconBolt, end: true },
   { to: "/wiki", label: "LLM Wiki", icon: IconBook2 },
+  // Discovery is the research-prototype surface for the 5-node LangGraph
+  // multi-evidence orchestrator (Signal → Evidence → Hypothesis →
+  // Evaluator → Human Review). Separate from Live Copilot to keep the
+  // production-narrative demo clean.
+  { to: "/discovery", label: "Discovery", icon: IconNetwork },
   { to: "/eval", label: "Evaluation", icon: IconClipboardCheck },
   // Misc tab bundles utilities lifted out of the old demo: per-run
   // export-as-Markdown, share-by-email, operator notes scratchpad, KB

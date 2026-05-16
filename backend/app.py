@@ -582,6 +582,17 @@ try:
 except Exception as _exc:  # noqa: BLE001
     logger.warning(f"⚠️ A2A router not mounted: {_exc}")
 
+# AI Discovery Workbench — POST /api/discovery/diagnose + SSE per-node stream.
+# Powers the React /discovery page (Phase 9 UI surfacing for the 5-node
+# LangGraph orchestrator with evidence-by-layer + hypothesis + evaluator
+# rendering).
+try:
+    from backend.langgraph_api import router as discovery_router
+    app.include_router(discovery_router)
+    logger.info("✅ Mounted Discovery router (/api/discovery/*)")
+except Exception as _exc:  # noqa: BLE001
+    logger.warning(f"⚠️ Discovery router not mounted: {_exc}")
+
 
 # Define request and response models
 class MessageRequest(BaseModel):

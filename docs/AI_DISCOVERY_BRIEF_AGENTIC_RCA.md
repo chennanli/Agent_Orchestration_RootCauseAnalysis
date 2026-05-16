@@ -1,7 +1,5 @@
 # AI Discovery Brief — Multi-Evidence Agentic RCA Workbench
 
-**Author:** chennanli
-**Sprint window:** 2026-05-15 – 2026-05-16 (24 h)
 **Status:** Experimental prototype, MVP evaluation complete.
 
 ## Research Signal

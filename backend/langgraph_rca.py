@@ -29,7 +29,7 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 # ---------------------------------------------------------------------------
 # Env
@@ -504,14 +504,36 @@ def build_graph():
 
 
 # ---------------------------------------------------------------------------
-# Run function (importable by Phase 4)
+# Run functions
 # ---------------------------------------------------------------------------
+def _persist_run(final: dict, fault_id: str) -> Path:
+    """Save run JSON to disk for replay / debugging."""
+    _OUT_DIR = _ROOT / "backend" / "diagnostics" / "multi_agent_runs"
+    _OUT_DIR.mkdir(parents=True, exist_ok=True)
+    ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    out_path = _OUT_DIR / f"lg_run_{fault_id}_{ts}.json"
+    try:
+        with open(out_path, "w") as f:
+            json.dump(final, f, indent=2, default=str)
+    except Exception:
+        pass
+    return out_path
+
+
 def run_langgraph(
     fault_id: str,
     question: str,
     thread_id: Optional[str] = None,
+    on_node: Optional[Callable[[str, dict], None]] = None,
 ) -> Dict[str, Any]:
-    """Run the 5-node LangGraph and return the final state dict."""
+    """Run the 5-node LangGraph and return the final state dict.
+
+    Parameters
+    ----------
+    on_node : optional callback called after each node updates state, with
+        (node_name, accumulated_state_so_far). Used by the SSE API in
+        backend.langgraph_api to stream per-node progress to the UI.
+    """
     _OUT_DIR = _ROOT / "backend" / "diagnostics" / "multi_agent_runs"
     _OUT_DIR.mkdir(parents=True, exist_ok=True)
     _DB_PATH = _OUT_DIR / "checkpoint.sqlite"
@@ -532,19 +554,27 @@ def run_langgraph(
             "hitl_required": False,
         }
 
-        final = app.invoke(initial_state, config=config)
+        # Use .stream() so we can fire the per-node callback as soon as a
+        # node finishes — same semantics as .invoke(), but with intermediate
+        # state events. Each item from .stream() is {node_name: state_delta}.
+        accumulated: Dict[str, Any] = dict(initial_state)
+        for step in app.stream(initial_state, config=config):
+            for node_name, delta in step.items():
+                if isinstance(delta, dict):
+                    accumulated.update(delta)
+                if on_node:
+                    try:
+                        on_node(node_name, dict(accumulated))
+                    except Exception:
+                        # never let a stream consumer crash the run
+                        pass
+        final = accumulated
 
     runtime = round(time.time() - t_start, 2)
     final["_runtime_seconds"] = runtime
 
-    # Save run JSON
-    ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-    out_path = _OUT_DIR / f"lg_run_{fault_id}_{ts}.json"
-    try:
-        with open(out_path, "w") as f:
-            json.dump(final, f, indent=2, default=str)
-    except Exception:
-        pass
+    # Persist run JSON for replay / debugging (used by the SSE replay path).
+    _persist_run(final, fault_id)
 
     return final
 
