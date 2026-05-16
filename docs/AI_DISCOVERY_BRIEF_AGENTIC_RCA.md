@@ -183,5 +183,11 @@ head-to-head number is quoted externally.
   citing externally.
 * The A2A surface is a local research interface implemented against the public
   protocol shape. It is not production-hardened and does not include auth.
-* TEP is a controlled manufacturing-like surrogate, not pharma data. The
-  transferable value is the evidence architecture and evaluation pattern.
+* TEP is a first-principles chemical-plant model (Downs & Vogel 1993):
+  5 unit operations, 8 chemical species, 41 XMEAS, 12 XMV, 20 IDV
+  disturbance scenarios. It is a controlled manufacturing-like surrogate,
+  not real pharma / fine-chemical data, and the absolute numbers here are
+  not directly comparable to any in-flight industrial dataset. The
+  transferable value is the evidence architecture and evaluation pattern —
+  which apply to fine-chemical, pharma drug-substance / drug-product,
+  polymer, refining, and fab settings.

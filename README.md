@@ -1,6 +1,6 @@
 # ⚡ TEP Live Copilot · Agentic Discovery Workbench
 
-> An industrial root-cause-analysis (RCA) prototype on the Tennessee Eastman Process benchmark — a safe surrogate for exploring agentic AI patterns: multi-agent orchestration, hybrid retrieval, time-series memory, A2A inter-agent boundaries, and a held-out evaluation harness.
+> An industrial root-cause-analysis (RCA) prototype on the Tennessee Eastman Process — a published **first-principles chemical-plant model** used here as a safe surrogate for fine-chemical / pharma / polymer / refining / fab plants. Explores agentic AI patterns: multi-agent orchestration, hybrid retrieval, time-series memory, A2A & MCP inter-agent boundaries, and a held-out evaluation harness.
 
 [![CI](https://github.com/chennanli/Agent_Orchestration_RootCauseAnalysis/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/chennanli/Agent_Orchestration_RootCauseAnalysis/actions/workflows/ci.yml)
 [![Release](https://github.com/chennanli/Agent_Orchestration_RootCauseAnalysis/actions/workflows/release.yml/badge.svg)](https://github.com/chennanli/Agent_Orchestration_RootCauseAnalysis/actions/workflows/release.yml)
@@ -27,6 +27,22 @@
 ---
 
 ## What this is
+
+### About the Tennessee Eastman Process
+
+The **Tennessee Eastman Process (TEP)** is a first-principles chemical-plant simulation published by Downs & Vogel (Eastman Chemical, 1993) and still the de-facto benchmark for industrial process monitoring and fault diagnosis. It is a Fortran solver of the mass, energy, and component balances of a complete continuous plant — **five interconnected unit operations** (reactor, condenser, vapor–liquid separator, product stripper, recycle compressor), **8 chemical species (A–H)**, **41 measured variables (XMEAS-1 … XMEAS-41)**, **12 manipulated variables (XMV-1 … XMV-12)**, and **20 canonical disturbance scenarios (IDV-1 … IDV-20)** ranging from feed-composition step changes to slow drifts in heat-exchanger fouling.
+
+Because the dynamics come from real reaction kinetics and process physics rather than synthetic data, TEP is widely used as a stand-in for any regulated continuous- or batch-process plant. The patterns this repo explores — continuous PCA / T² anomaly detection, multi-evidence retrieval, multi-step diagnostic reasoning, advisory-only safety boundaries, held-out evaluation — transfer cleanly to:
+
+- **Fine-chemical manufacturing** (continuous reactors, distillation trains, recycle loops)
+- **Pharma drug-substance and drug-product plants** (API synthesis, crystallization, formulation lines under GxP constraints)
+- **Polymer production** (continuous polymerization, devolatilization, extrusion)
+- **Oil-and-gas refining and petrochemicals** (FCC units, hydrotreaters, separators)
+- **Semiconductor fabs** (CVD / etch / CMP — different physics, same need for explainable RCA from sensor streams)
+
+Anywhere there are PI / Historian tags, an MES, a recipe of unit operations, and a control room that wants to know *why* the trend is moving, the architecture in this repo is the architecture you'd build.
+
+### The prototype
 
 A single-page web app that pairs a **live Fortran simulation** of the Tennessee Eastman Process with **two parallel agentic RCA paths** over the same deterministic substrate:
 
