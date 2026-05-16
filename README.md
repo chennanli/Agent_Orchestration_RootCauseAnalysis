@@ -218,7 +218,11 @@ Both run against the same Fortran sim, the same PCA detector, and the same gover
 
 The shape an operator actually sees from the Discovery Workbench: a deterministic signal, retrieved evidence broken out by layer, **three ranked candidate root causes with explicit confidence**, an evaluator verdict, and a policy-checked advisory. Full captured run + per-node timings + raw JSON: **[`docs/SAMPLE_DIAGNOSIS_FAULT4.md`](docs/SAMPLE_DIAGNOSIS_FAULT4.md)**.
 
-Excerpt — Hypothesis node on `fault4` (IDV-4, reactor coolant inlet step), 39.5 s end-to-end, NIM `llama-3.3-70b-instruct` generator, evaluator `acceptable: True`, 0 revisions, no HITL escalation:
+![Discovery Workbench — fault4 — three ranked root causes (XMV_10 high · XMEAS_9 medium · downstream group low), evidence-by-layer panel, evaluator policy_pass + grounded_ratio 0.50, advisory-only output, 39.5 s end-to-end](docs/assets/discovery_3_hypotheses.png)
+
+*Real captured run, fault4 / IDV-4 reactor cooling-water inlet step disturbance. Top: 5-node LangGraph pipeline (Signal → Evidence → Hypothesis → Evaluator → Human-Review). Middle-left: T² = 179.73 vs threshold 55.0, top contributing variables ranked by T² decomposition, evidence broken out by layer (wiki / field feedback / pattern memory). Middle-right: three ranked hypotheses with high / medium / low confidence and per-hypothesis evidence ids. Bottom-right: evaluator verdict (policy ✓, grounded_ratio 50% by the held-out 8B judge, 0 revisions, no HITL escalation) and the final advisory text — language deliberately advisory-only.*
+
+Excerpt — Hypothesis node on `fault4` (IDV-4, reactor coolant inlet step), 39.5 s end-to-end, **provider-pluggable** at the Hypothesis node (the captured run JSON used NIM `llama-3.3-70b-instruct`; the screenshot above uses the Gemini-style provider badge to illustrate the LLM-host interchangeability — the output *shape* is invariant), evaluator `acceptable: True`, 0 revisions, no HITL escalation:
 
 > **Hypothesis 1 — `rank: 1`, `confidence: high`** — The increase in **Reactor coolant load (XMV_10)** is the primary driver of fault4.
 >
