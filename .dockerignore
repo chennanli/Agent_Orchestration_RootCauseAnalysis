@@ -83,3 +83,39 @@ STOP_ALL.command
 .env.template
 config.template.json
 
+# ---------------------------------------------------------------------------
+# Secrets & local-only tooling — MUST NOT enter the Docker build context.
+# This block mirrors the analogous protections in .gitignore. Even though
+# the current Dockerfiles copy explicit subtrees rather than the whole
+# tree, a remote builder (`docker buildx` / GHA runner) still receives
+# the full build context before the COPY filter runs — so anything an
+# attacker could exfiltrate from build logs lives here, and these
+# patterns short-circuit that path.
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.template
+**/.env
+**/.env.*
+**/.env.local
+*.env
+
+# Local agent / IDE scratch state
+.claude/
+.codex/
+.roomodes
+.serena/
+.cursor/
+.aider*
+.windsurf/
+
+# Local Python / venv state (already largely covered above, but explicit)
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# Local diagnostic dumps & saved runs (not part of any shipped artefact)
+backend/diagnostics/
+backend/LLM_RCA_Results/
+

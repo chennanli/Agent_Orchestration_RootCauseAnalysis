@@ -3,7 +3,7 @@
   "question": "Diagnose fault4. Which variable is driving it?",
   "anomaly_snapshot": {
     "fault_id": "fault4",
-    "csv_file": "/Users/chennanMac_mini_SE/Desktop/LLM_Project/TEP_demo-main/frontend/public/fault4.csv",
+    "csv_file": "frontend/public/fault4.csv",
     "anomaly_index": 20,
     "t2_statistic": 179.73161703714817,
     "t2_threshold": 55.0,

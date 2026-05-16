@@ -27,9 +27,29 @@ T2_THRESHOLD_DEMO = 55.0
 ANOMALY_RUN_LENGTH = 20
 
 _BACKEND_DIR = Path(__file__).resolve().parent.parent
+_REPO_ROOT = _BACKEND_DIR.parent
 _DATA_DIR = _BACKEND_DIR / "data"
-_FRONTEND_PUBLIC = _BACKEND_DIR.parent / "frontend" / "public"
+_FRONTEND_PUBLIC = _REPO_ROOT / "frontend" / "public"
 _STATS_FILE = _BACKEND_DIR / "stats" / "features_mean_std.csv"
+
+
+def _csv_str(p: Path) -> str:
+    """Serialize a fault-CSV Path for tool output.
+
+    Returns a repo-relative POSIX string when the path is inside the repo,
+    falling back to just the filename otherwise. This is the only public
+    serialization site for csv paths in tool output — keep it repo-relative
+    so we never leak the developer's home directory (`/Users/foo/...`)
+    into committed sample runs, A2A responses, MCP responses, or SSE
+    state snapshots delivered to the browser.
+    """
+    try:
+        rel = p.resolve().relative_to(_REPO_ROOT)
+        return rel.as_posix()
+    except ValueError:
+        # Path is outside the repo (e.g. a tempfile from a test); strip
+        # everything but the filename so absolute home paths can't leak.
+        return p.name
 
 
 def _normalize_fault_id(fault_id: Union[str, int]) -> str:
@@ -126,7 +146,7 @@ def inspect_anomaly_snapshot(fault_id: Union[str, int] = "fault1") -> Dict[str, 
     except FileNotFoundError as exc:
         snap = AnomalySnapshot(
             fault_id=canonical,
-            csv_file=str(_resolve_csv_path(canonical)),
+            csv_file=_csv_str(_resolve_csv_path(canonical)),
             anomaly_index=-1,
             t2_statistic=0.0,
             t2_threshold=T2_THRESHOLD_DEMO,
@@ -158,7 +178,7 @@ def inspect_anomaly_snapshot(fault_id: Union[str, int] = "fault1") -> Dict[str, 
 
     snap = AnomalySnapshot(
         fault_id=canonical,
-        csv_file=str(csv_path),
+        csv_file=_csv_str(csv_path),
         anomaly_index=anomaly_idx,
         t2_statistic=t2_value,
         t2_threshold=T2_THRESHOLD_DEMO,
@@ -185,7 +205,7 @@ def rank_contributing_variables(
     except FileNotFoundError as exc:
         return {
             "fault_id": canonical,
-            "csv_file": str(_resolve_csv_path(canonical)),
+            "csv_file": _csv_str(_resolve_csv_path(canonical)),
             "top_variables": [],
             "method": "none",
             "error": str(exc),
@@ -195,7 +215,7 @@ def rank_contributing_variables(
     if anomaly_idx < 0:
         return {
             "fault_id": canonical,
-            "csv_file": str(csv_path),
+            "csv_file": _csv_str(csv_path),
             "top_variables": [],
             "method": "none",
             "note": "No stable anomaly found; nothing to rank.",
@@ -278,7 +298,7 @@ def rank_contributing_variables(
 
     return {
         "fault_id": canonical,
-        "csv_file": str(csv_path),
+        "csv_file": _csv_str(csv_path),
         "anomaly_index": int(anomaly_idx),
         "method": method,
         "top_variables": [_to_dict(c) for c in contributions],

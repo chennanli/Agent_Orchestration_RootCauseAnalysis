@@ -12,6 +12,7 @@
 //   └────────────────────────────────────────────────────────────────────┘
 
 import {
+  Alert,
   Badge,
   Button,
   Group,
@@ -22,7 +23,11 @@ import {
   Title,
   Loader,
 } from "@mantine/core";
-import { IconPlayerPlayFilled, IconRefresh } from "@tabler/icons-react";
+import {
+  IconAlertCircle,
+  IconPlayerPlayFilled,
+  IconRefresh,
+} from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import DiscoveryGraphPipeline from "../components/DiscoveryGraphPipeline";
 import EvaluatorVerdictPanel from "../components/EvaluatorVerdictPanel";
@@ -53,6 +58,14 @@ export default function DiscoveryPage() {
   const [faultId, setFaultId] = useState("fault1");
   const isRunning = stream.phase === "submitting" || stream.phase === "streaming";
 
+  // Visible error state when `?replay=<url>` fails. Pure console.error
+  // leaves the page looking idle — a reviewer/operator can't tell whether
+  // the link is broken or the orchestrator just hasn't been triggered yet.
+  const [replayError, setReplayError] = useState<{
+    url: string;
+    detail: string;
+  } | null>(null);
+
   // `?replay=<url>` hydrates the page from a previously captured run JSON
   // (no SSE, no LLM call). Useful for sharing a finished investigation as a
   // link, for rendering doc screenshots from `docs/sample_runs/*.json`, and
@@ -66,19 +79,37 @@ export default function DiscoveryPage() {
       try {
         const r = await fetch(replayUrl);
         if (!r.ok) {
-          console.error(`replay: HTTP ${r.status} for ${replayUrl}`);
+          const msg = `HTTP ${r.status} ${r.statusText || ""}`.trim();
+          console.error(`replay: ${msg} for ${replayUrl}`);
+          if (!cancelled) setReplayError({ url: replayUrl, detail: msg });
           return;
         }
-        const snapshot = (await r.json()) as DiscoveryStateSnapshot & {
+        let snapshot: DiscoveryStateSnapshot & {
           fault_id?: string;
           _runtime_seconds?: number;
         };
+        try {
+          snapshot = (await r.json()) as typeof snapshot;
+        } catch (parseExc) {
+          const msg =
+            parseExc instanceof Error ? parseExc.message : String(parseExc);
+          console.error(`replay: JSON parse failed for ${replayUrl}`, parseExc);
+          if (!cancelled)
+            setReplayError({
+              url: replayUrl,
+              detail: `JSON parse failed: ${msg}`,
+            });
+          return;
+        }
         if (cancelled) return;
         const replayFault = snapshot.fault_id ?? "fault1";
         setFaultId(replayFault);
+        setReplayError(null);
         stream.loadSnapshot(snapshot, replayFault);
       } catch (exc) {
-        console.error("replay: fetch/parse failed", exc);
+        const msg = exc instanceof Error ? exc.message : String(exc);
+        console.error("replay: fetch failed", exc);
+        if (!cancelled) setReplayError({ url: replayUrl, detail: msg });
       }
     })();
     return () => {
@@ -129,6 +160,25 @@ export default function DiscoveryPage() {
           )}
         </Group>
       </Group>
+
+      {replayError && (
+        <Alert
+          color="red"
+          icon={<IconAlertCircle size={18} />}
+          title="Replay failed"
+          variant="light"
+          withCloseButton
+          onClose={() => setReplayError(null)}
+        >
+          Could not load the saved-run snapshot from{" "}
+          <Text component="span" ff="monospace" fw={600}>
+            {replayError.url}
+          </Text>
+          : {replayError.detail}. The page is in the idle state — click{" "}
+          <strong>Run discovery</strong> to start a fresh orchestrator run, or
+          fix the <code>?replay=</code> URL and reload.
+        </Alert>
+      )}
 
       <Group gap="sm" wrap="wrap">
         <Badge size="md" color={PHASE_COLOR[stream.phase] ?? "gray"} variant="light">

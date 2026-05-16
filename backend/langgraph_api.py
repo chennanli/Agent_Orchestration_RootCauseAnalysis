@@ -174,7 +174,10 @@ async def discovery_diagnose(req: DiagnoseRequest) -> DiagnoseStarted:
     return DiagnoseStarted(
         run_id=run_id,
         fault_id=req.fault_id,
-        started_at=datetime.now(timezone.utc).isoformat() + "Z",
+        # `datetime.now(tz=UTC).isoformat()` already yields a `+00:00`
+        # offset; appending "Z" produced the malformed `...+00:00Z` form.
+        # Just use the plain ISO string.
+        started_at=datetime.now(timezone.utc).isoformat(),
         stream_url=f"/api/discovery/runs/{run_id}/stream",
     )
 

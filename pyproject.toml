@@ -82,8 +82,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/chennanli/TEP_Agent_Orchestration_demo"
-Repository = "https://github.com/chennanli/TEP_Agent_Orchestration_demo"
+Homepage = "https://github.com/chennanli/Agent_Orchestration_RootCauseAnalysis"
+Repository = "https://github.com/chennanli/Agent_Orchestration_RootCauseAnalysis"
+Issues = "https://github.com/chennanli/Agent_Orchestration_RootCauseAnalysis/issues"
 
 # ---------------------------------------------------------------------------
 # Build system: we ship the project as a Python application, not a wheel,

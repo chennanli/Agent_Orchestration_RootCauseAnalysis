@@ -27,7 +27,7 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from backend.agent_tools.live_snapshot import snapshot_live_buffer
 from backend.nat_runner import RUNS_DIR, run_nat_streaming, NAT_WORKFLOW_FILE
@@ -60,15 +60,16 @@ class _LiveRun(BaseModel):
     canonical copy of the run lives on disk under RUNS_DIR after completion.
     """
 
+    # Pydantic v2 style; replaces the deprecated `class Config: ...` block
+    # that was emitting PydanticDeprecatedSince20 on every pytest run.
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     run_id: str
     queue: Any
     task: Any
     started_at: str
     fault_id: str
     question: str
-
-    class Config:
-        arbitrary_types_allowed = True
 
 
 _active_runs: Dict[str, _LiveRun] = {}
