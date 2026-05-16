@@ -482,3 +482,8 @@ scripts/patch_ppt_deck.py
 docs/NAT_AGENTIC_RCA_ARCHITECTURE.md
 blog/tep_nat_agentic_rca_blog.md
 blog/tep_nat_agentic_rca_blog.html
+
+# Demo / recording / customer-walkthrough material. Not user documentation.
+archive/legacy_demo_material/VIDEO_RECORDING_SCRIPT_ENGLISH.md
+archive/legacy_demo_material/VIDEO_RECORDING_SCRIPT_CHINESE.md
+archive/legacy_demo_material/RAG_EXPLANATION_GUIDE_CHINESE.md
