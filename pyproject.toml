@@ -42,6 +42,26 @@ dependencies = [
     # decoration time, so without this the whole backend.app import
     # raises RuntimeError. Used by /rag/upload_build and /api/misc/kb/upload.
     "python-multipart>=0.0.9",
+    # ---------------------------------------------------------------------
+    # AI Discovery Workbench runtime — required at IMPORT TIME by the
+    # post-MVP modules (mirrors the same block in requirements.txt).
+    # These are NOT optional: backend/langgraph_rca.py and
+    # backend/mcp_server.py do top-level `from langgraph.graph import ...`
+    # / `from mcp.server.fastmcp import ...`. CI installs via
+    # `pip install -e ".[dev]"`, so without these here
+    # `pytest backend/tests` fails at COLLECTION for test_langgraph_rca.py,
+    # test_mcp_server.py, and test_judge.py (judge.py re-exports
+    # _extract_first_json from langgraph_rca).
+    # Pinned to the versions the eval scripts exercise on 2026-05-16.
+    "langgraph>=1.1,<2.0",                       # 5-node orchestrator
+    "langgraph-checkpoint-sqlite>=3.1,<4.0",     # sqlite checkpointer
+    "langchain>=1.2,<2.0",                       # LLM message + tool primitives
+    "langchain-nvidia-ai-endpoints>=1.3,<2.0",   # NIM ChatNVIDIA + Embeddings
+    "chromadb>=1.5,<2.0",                        # vector index for hybrid RAG
+    "rank-bm25>=0.2,<0.3",                       # BM25 sparse retrieval
+    "stumpy>=1.14,<2.0",                         # Matrix Profile case memory
+    "mcp>=1.27,<2.0",                            # Model Context Protocol server
+    "typing-extensions>=4.10",                   # TypedDict total=False for RCAState
 ]
 
 [project.optional-dependencies]
