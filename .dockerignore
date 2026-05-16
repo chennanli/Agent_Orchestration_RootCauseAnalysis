@@ -10,6 +10,12 @@ ENV/
 env/
 tep_env/
 
+# Re-include the prebuilt Linux Fortran extension for the TEP simulator —
+# Dockerfile.backend + Dockerfile.console BOTH COPY this file by name, so it
+# must survive the generic *.so exclude above. (The darwin .so variants stay
+# excluded — they're built per-host and only used outside Docker.)
+!backend/simulation/temain_mod.cpython-36m-x86_64-linux-gnu.so
+
 # Node.js
 node_modules/
 npm-debug.log*
@@ -36,6 +42,11 @@ Thumbs.db
 # Documentation (don't need in container)
 *.md
 !README.md
+# Critical: the agent's `search_process_knowledge` tool reads
+# RAG/converted_markdown/*.md AT RUNTIME inside the container. Without this
+# re-include, the generic `*.md` rule above strips those files out of the
+# Docker build context and the keyword/hybrid wiki search returns 0 hits.
+!RAG/converted_markdown/*.md
 docs/
 image/
 

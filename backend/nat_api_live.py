@@ -25,7 +25,7 @@ import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
@@ -207,13 +207,33 @@ async def diagnose(req: DiagnoseRequest) -> Dict[str, Any]:
     }
 
 
+def _apply_sse_cors(resp: StreamingResponse, request: Request) -> None:
+    """Mirror the CORS allowlist used by backend.app for SSE responses.
+
+    Earlier code hardcoded `Access-Control-Allow-Origin: *` here, which
+    bypassed CORSMiddleware's allowlist. Now we import the same `origins`
+    list from `backend.app` and echo the request's Origin only if it's
+    present; otherwise the header is omitted (browser blocks cross-origin
+    reads — safer default)."""
+    try:
+        # Lazy import to avoid a circular import at module load.
+        from backend.app import origins as _allowed
+        req_origin = request.headers.get("origin") if request is not None else None
+    except Exception:
+        return
+    if req_origin and req_origin in _allowed:
+        resp.headers["Access-Control-Allow-Origin"] = req_origin
+        resp.headers["Access-Control-Allow-Credentials"] = "true"
+        resp.headers["Vary"] = "Origin"
+
+
 def _sse(event: str, data: Any) -> str:
     body = json.dumps(data, default=str)
     return f"event: {event}\ndata: {body}\n\n"
 
 
 @router.get("/api/agent/runs/{run_id}/stream")
-async def stream_run(run_id: str) -> StreamingResponse:
+async def stream_run(run_id: str, request: Request) -> StreamingResponse:
     """Server-Sent Events stream of IntermediateSteps for a live run.
 
     If the run is still in `_active_runs`, the stream tails its queue. If
@@ -235,7 +255,7 @@ async def stream_run(run_id: str) -> StreamingResponse:
             resp = StreamingResponse(_replay(), media_type="text/event-stream")
             resp.headers["Cache-Control"] = "no-cache"
             resp.headers["X-Accel-Buffering"] = "no"
-            resp.headers["Access-Control-Allow-Origin"] = "*"
+            _apply_sse_cors(resp, request)
             return resp
         raise HTTPException(status_code=404, detail=f"unknown run_id {run_id}")
 
@@ -265,7 +285,7 @@ async def stream_run(run_id: str) -> StreamingResponse:
     resp = StreamingResponse(_event_gen(), media_type="text/event-stream")
     resp.headers["Cache-Control"] = "no-cache"
     resp.headers["X-Accel-Buffering"] = "no"
-    resp.headers["Access-Control-Allow-Origin"] = "*"
+    _apply_sse_cors(resp, request)
     return resp
 
 

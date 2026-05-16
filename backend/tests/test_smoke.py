@@ -1,6 +1,6 @@
 """Smoke tests — fast, no external dependencies, no NAT runtime.
 
-These guard the most basic regressions Codex flagged in CODEX_REVIEW_FOR_CLAUDE.md:
+These guard the most basic deployment regressions:
   - `backend.app` must be importable as a package (uvicorn deployment path)
   - The Live Copilot router must register the expected routes
   - The model registry must include every advertised model id
@@ -25,7 +25,7 @@ if str(REPO_ROOT) not in sys.path:
 
 
 def test_backend_app_importable():
-    """`uvicorn backend.app:app` must work — Codex P0-1."""
+    """`uvicorn backend.app:app` must work."""
     from backend import app as appmod
 
     assert hasattr(appmod, "app"), "backend.app module must export `app`"

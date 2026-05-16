@@ -150,7 +150,7 @@ suspenders checks individually proves the system is safe — together they
 make it very hard to accidentally ship a recommendation that crosses the
 line.
 
-## 7. Interview / leadership takeaway
+## 7. Leadership takeaway
 
 The honest framing of this project, end-to-end, is:
 
@@ -163,7 +163,6 @@ The honest framing of this project, end-to-end, is:
 > traceable RCA for human review. The value is not the LLM — it is making
 > industrial AI understandable, testable, and governable.
 
-That framing maps cleanly to what an AI/ML director role for a heavy-
-industry vendor actually has to do every week: keep the customer's
-imagination ahead of the vendor's marketing, and the vendor's safety
-posture ahead of the customer's imagination.
+That framing maps cleanly to what industrial AI leadership has to do:
+keep the customer's imagination ahead of vendor marketing, and keep the
+safety posture ahead of both.

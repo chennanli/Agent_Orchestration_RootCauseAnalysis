@@ -414,6 +414,37 @@ frontend/.vite/
 
 # Local blog drafts for human / Claude iteration.
 blog/human_in_loop_governed_wiki_agent_orchestration_draft.html
+blog/*draft*.html
+
+# Interview / follow-up / private review materials. These files can be useful
+# locally while preparing a portfolio narrative, but they should not be pushed
+# to a public repo or mixed into normal git staging.
+_CC_REPORT*.md
+*_CC_REPORT*.md
+*hiring_manager*.md
+*interview*.md
+*INTERVIEW*.md
+*followup*.md
+*follow-up*.md
+*hiring_manager*.html
+*interview*.html
+*INTERVIEW*.html
+*followup*.html
+*follow-up*.html
+HM_*.md
+HR_*.md
+hm_*.md
+hr_*.md
+*_HM_*.md
+*_HR_*.md
+*-HM-*.md
+*-HR-*.md
+docs/DOCUMENTATION_MAP.md
+docs/PRD_TEP_AGENTIC_DISCOVERY_WORKBENCH.md
+
+# Accidental root npm lockfile; the real frontend lockfile is
+# frontend/package-lock.json and remains tracked.
+/package-lock.json
 
 # Tmp log files left by START_TEP_COPILOT.command
 /tmp/tep_*.log
@@ -430,3 +461,16 @@ blog/human_in_loop_governed_wiki_agent_orchestration_draft.html
 # override — last matching rule wins — so we re-include them here at the
 # very bottom rather than next to the RAG/* exclude.
 !RAG/converted_markdown/2_TEP_Complete_Technical_Reference.md
+
+# AI Discovery Workbench derived caches (~30 MB). Regenerated on first use:
+#   mp_archive.npz   ← pattern_tools._build_archive()
+#   chroma/          ← vector_knowledge.build_or_load_index()
+#   bm25_corpus.json ← vector_knowledge.build_or_load_index()
+# Rebuild cost: ~3 min NIM embedding pass + ~1 min matrix-profile archive build.
+backend/data/embeddings/
+
+# Eval result artifacts are derived from the eval scripts; keep the scripts in
+# git, leave the JSONs / markdown reports / synthetic cases out so the repo
+# doesn't carry stale numbers across re-runs.
+backend/evaluation/results/*.json
+backend/evaluation/results/*.md

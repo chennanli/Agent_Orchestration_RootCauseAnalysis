@@ -17,7 +17,7 @@ for _p in (_REPO_ROOT, _HERE):
 
 # imports
 from openai import OpenAI
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, Request
 from typing import List
 from fastapi.responses import StreamingResponse, JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -467,7 +467,13 @@ ingest_logger.setLevel(logging.INFO)
 # Initialize FastAPI app
 app = FastAPI()
 
-# Safari-compatible CORS origins (use 127.0.0.1 instead of localhost)
+# Safari-compatible CORS origins (use 127.0.0.1 instead of localhost).
+# NOTE: do NOT add "*" here while allow_credentials=True — the combination is
+# a CSRF / exfiltration anti-pattern (modern browsers ignore the credentials
+# half, but the intent is wrong, and if this server ever binds to a non-local
+# interface any visited site could call the API). Enumerate the dev ports
+# explicitly. Override with TEP_CORS_EXTRA_ORIGINS (comma-separated) if a
+# custom dev or deploy origin is needed.
 origins = [
     "http://127.0.0.1:5173",
     "http://127.0.0.1:9002",
@@ -475,8 +481,10 @@ origins = [
     "http://localhost:5173",  # Fallback for Chrome
     "http://localhost:9002",
     "http://localhost:8000",
-    "*"
 ]
+_extra = os.environ.get("TEP_CORS_EXTRA_ORIGINS", "").strip()
+if _extra:
+    origins.extend([o.strip() for o in _extra.split(",") if o.strip()])
 
 app.add_middleware(
     CORSMiddleware,
@@ -485,6 +493,24 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def _apply_sse_cors(resp, request) -> None:
+    """Set CORS headers on an SSE/StreamingResponse against the same allowlist
+    used by CORSMiddleware. SSE responses bypass the middleware for header
+    purposes; earlier code hard-coded `Access-Control-Allow-Origin: *` here,
+    which broke the allowlist for the streaming endpoints. This helper
+    echoes the request's `Origin` ONLY if it's in `origins`; otherwise the
+    header is omitted entirely (= no CORS = browser blocks cross-origin
+    reads, which is the safer default)."""
+    try:
+        req_origin = request.headers.get("origin") if request is not None else None
+    except Exception:
+        req_origin = None
+    if req_origin and req_origin in origins:
+        resp.headers["Access-Control-Allow-Origin"] = req_origin
+        resp.headers["Access-Control-Allow-Credentials"] = "true"
+        resp.headers["Vary"] = "Origin"
 
 # Initialize Knowledge Manager for RAG
 try:
@@ -544,6 +570,17 @@ try:
     logger.info("✅ Mounted misc router")
 except Exception as _exc:  # noqa: BLE001
     logger.warning(f"⚠️ Misc router not mounted: {_exc}")
+
+# A2A (Agent-to-Agent) interface — agent card + JSON-RPC + SSE.
+# Exposes diagnose_process_anomaly / search_governed_wiki / review_advisory_policy
+# to other agents over a local A2A-style surface.
+try:
+    from backend.a2a_router import a2a_router, well_known_router
+    app.include_router(well_known_router)
+    app.include_router(a2a_router)
+    logger.info("✅ Mounted A2A router (/.well-known/agent-card.json, /a2a, /a2a/stream)")
+except Exception as _exc:  # noqa: BLE001
+    logger.warning(f"⚠️ A2A router not mounted: {_exc}")
 
 
 # Define request and response models
@@ -773,8 +810,6 @@ async def ingest_live_point(req: IngestRequest):
                     import asyncio
                     # Pre-compute timestamps so background_llm_analysis and the
                     # outer ingest scope share the same "time of trigger" values.
-                    # (Codex P0-2 bug: `now` was referenced but never defined,
-                    # crashing /ingest whenever the LLM trigger branch fired.)
                     import time as _t
                     now_ts = _t.time()
                     now_iso = datetime.now().isoformat()
@@ -919,7 +954,7 @@ async def ingest_live_point(req: IngestRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/stream")
-async def stream_live_points():
+async def stream_live_points(request: Request):
     """Server-Sent Events stream of the latest aggregated live point.
     Previous implementation yielded only when len(live_buffer) grew, which stalls
     once the deque reaches its maxlen. Here we track the 'time' field of the last
@@ -946,11 +981,11 @@ async def stream_live_points():
                     break
         finally:
             sse_logger.info("client disconnected")
-    # Add SSE-friendly headers (and CORS for dev)
+    # Add SSE-friendly headers + CORS scoped to the allowlist (not "*").
     resp = StreamingResponse(event_generator(), media_type="text/event-stream")
     resp.headers["Cache-Control"] = "no-cache"
     resp.headers["X-Accel-Buffering"] = "no"
-    resp.headers["Access-Control-Allow-Origin"] = "*"
+    _apply_sse_cors(resp, request)
     return resp
 
 
@@ -1877,7 +1912,7 @@ async def check_anomaly_change(request: ExplainationRequest):
 @app.post("/explain", response_model=None)
 async def explain(request: ExplainationRequest):
     try:
-        logger.info(f"explain start id=%s file=%s - Using LOCAL LLM (Claude Desktop/Codex)", request.id, request.file)
+        logger.info("explain start id=%s file=%s - using local LLM endpoint", request.id, request.file)
 
         # 🔧 CRITICAL FIX: Check LLM request frequency limit BEFORE processing
         can_send, reason = anomaly_state_tracker.can_send_llm_request()
@@ -3039,8 +3074,16 @@ if __name__ == "__main__":
     try:
         import uvicorn
         print("📡 Uvicorn imported successfully")
-        print("🌐 Starting server on http://0.0.0.0:8000")
-        uvicorn.run(app, host="0.0.0.0", port=8000)
+        # Bind to loopback by default. The A2A surface and `/api/agent/diagnose`
+        # run LLM workflows on arbitrary user text with no auth or rate limit;
+        # binding to all interfaces would let anyone on the local network drain
+        # the NVIDIA_API_KEY quota. Set TEP_BIND_ALL=1 in the environment if
+        # you explicitly want to expose the API to other machines (e.g. Docker
+        # network, demo to a teammate).
+        _host = "0.0.0.0" if os.environ.get("TEP_BIND_ALL") == "1" else "127.0.0.1"
+        print(f"🌐 Starting server on http://{_host}:8000  "
+              f"(set TEP_BIND_ALL=1 to expose on all interfaces)")
+        uvicorn.run(app, host=_host, port=8000)
     except Exception as e:
         print(f"❌ Error starting server: {e}")
         import traceback

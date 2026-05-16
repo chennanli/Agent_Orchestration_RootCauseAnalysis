@@ -50,8 +50,20 @@ services:
       # backend/sim_control.py reads this to find the Fortran simulator.
       - UNIFIED_CONSOLE_URL=http://console:9002
       - PYTHONUNBUFFERED=1
+      # The standalone backend defaults to 127.0.0.1 for safety (LLM workflows
+      # over arbitrary user text with no auth would otherwise let any host on
+      # the local network drain the API quota). Inside Docker, Docker's bridge
+      # NAT means we MUST bind to 0.0.0.0 for the `ports: 8000:8000` mapping
+      # to reach the container. TEP_BIND_ALL=1 enables that.
+      - TEP_BIND_ALL=1
     ports:
-      - "8000:8000"
+      # Publish on the host's loopback only by default — the A2A and
+      # /api/agent/diagnose endpoints run LLM workflows on arbitrary user
+      # text with no auth, so exposing them on every host interface would
+      # let anyone on the LAN drain the NVIDIA_API_KEY quota. To deliberately
+      # expose to another machine, set COMPOSE_HOST_BIND=0.0.0.0 in your .env
+      # (e.g. for a teammate demo on the same office network).
+      - "${COMPOSE_HOST_BIND:-127.0.0.1}:8000:8000"
     networks:
       - tep-network
     healthcheck:
@@ -81,8 +93,8 @@ services:
       - PYTHONUNBUFFERED=1
     ports:
       # Exposed for direct debugging; the React UI talks to backend, not
-      # this. Comment out for a tighter setup.
-      - "9002:9002"
+      # this. Loopback-only by default; same COMPOSE_HOST_BIND override.
+      - "${COMPOSE_HOST_BIND:-127.0.0.1}:9002:9002"
     networks:
       - tep-network
     restart: unless-stopped
@@ -96,8 +108,9 @@ services:
     container_name: tep-frontend
     ports:
       # Container's nginx listens on 80; publish it on 5173 to match the
-      # dev-mode Vite port the README has always referenced.
-      - "5173:80"
+      # dev-mode Vite port the README has always referenced. Loopback-only
+      # by default; same COMPOSE_HOST_BIND override.
+      - "${COMPOSE_HOST_BIND:-127.0.0.1}:5173:80"
     depends_on:
       backend:
         condition: service_healthy

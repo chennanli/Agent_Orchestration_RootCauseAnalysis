@@ -44,6 +44,33 @@ The very first version of this project, recorded on YouTube here ▶ **[original
 
 ---
 
+## AI Discovery / Agentic Experimentation Layer (research prototype)
+
+Research extension that reframes TEP as a controlled experimentation sandbox
+for frontier agentic AI patterns:
+
+- **5-node LangGraph orchestration** (Signal → Evidence → Hypothesis →
+  Evaluator → optional Human Review) in `backend/langgraph_rca.py`
+- **4 evidence layers** the Evidence agent can mix per query — governed wiki
+  RAG, field feedback (prior RCA notes), policy / constraint catalog,
+  time-series case memory via Matrix Profile (single entry point in
+  `backend/agent_tools/evidence_router.py`)
+- **Evaluation harness** comparing NAT single-agent baseline vs LangGraph
+  multi-evidence: grounding ratio, evidence layer utilization, revision
+  count, latency, end-to-end completion rate
+
+Run:
+
+```bash
+python backend/langgraph_rca.py --fault fault1
+python backend/evaluation/evaluate_agentic_discovery.py --limit 3
+```
+
+Writeup: [`docs/AI_DISCOVERY_BRIEF_AGENTIC_RCA.md`](docs/AI_DISCOVERY_BRIEF_AGENTIC_RCA.md).
+Local follow-up drafts and private review notes are intentionally ignored.
+
+---
+
 ## Architecture
 
 ### End-to-end data + agent flow
@@ -162,28 +189,114 @@ The component tree is in [`frontend/src/`](frontend/src/) — page, 8 components
 
 ## Run it
 
-### Quick start with Docker (recommended for first-time users)
+### Quick start with Docker
 
-Cross-platform, no Python/Node/Fortran toolchain needed. Runs the same images that get built and published on every release.
+Cross-platform, no Python/Node/Fortran toolchain needed.
+
+> **Heads-up on freshness.** The post-MVP **AI Discovery layer** (LangGraph
+> orchestrator, A2A surface, hybrid RAG with chromadb + BM25, Matrix
+> Profile case memory) was added after the last GHCR release tag and is
+> not yet baked into the published `:latest` images. If you want those
+> endpoints — `/.well-known/agent-card.json`, `/a2a`,
+> `backend.langgraph_rca`, hybrid wiki search — **build from source**
+> (the second variant below). The published-images path still runs the
+> base Live Copilot UI fine.
+
+#### A) Pull published images (base Live Copilot only)
 
 ```bash
-# 1. Clone
 git clone https://github.com/chennanli/Agent_Orchestration_RootCauseAnalysis.git
 cd Agent_Orchestration_RootCauseAnalysis
-
-# 2. Put your API key in .env (NVIDIA NIM is free, Gemini is free; either works)
-echo "NVIDIA_API_KEY=your_key_here" > .env
-#   (or)
-echo "GEMINI_API_KEY=your_key_here" > .env
-
-# 3. Pull the pre-built images and run
+echo "NVIDIA_API_KEY=your_key_here" > .env       # or GEMINI_API_KEY=...
 docker compose pull
 docker compose up
 ```
 
-Open <http://localhost:5173/> — full Live Copilot UI, ready to take a `Diagnose Now` click.
+Then open <http://localhost:5173/> — base Live Copilot UI with PCA / T²
+detection, six-tool NAT ReAct agent, and follow-up chat against saved runs.
 
-To stop everything: `docker compose down`. To rebuild from source instead of pulling: `docker compose up --build`.
+#### B) Build from source (includes the AI Discovery Workbench)
+
+```bash
+git clone https://github.com/chennanli/Agent_Orchestration_RootCauseAnalysis.git
+cd Agent_Orchestration_RootCauseAnalysis
+echo "NVIDIA_API_KEY=your_key_here" > .env
+docker compose up --build
+```
+
+The `--build` step picks up the agentic-stack dependencies that landed in
+`requirements.txt` after the MVP (`langgraph`, `langchain`,
+`langchain-nvidia-ai-endpoints`, `chromadb`, `rank-bm25`, `stumpy`,
+`langgraph-checkpoint-sqlite`, `typing-extensions`). First build is slow
+because `chromadb` pulls a lot; subsequent builds use Docker's layer cache.
+
+To stop everything: `docker compose down`. To rebuild a single service:
+`docker compose build --no-cache backend && docker compose up -d backend`.
+
+#### Docker smoke test (verify a clean build actually works)
+
+These checks are explicitly listed because the post-MVP AI Discovery code
+paths have **not been smoke-tested against a Docker build on the machine
+where it last shipped** — the .dockerignore, requirements.txt, and Dockerfile
+COPYs were repaired statically. Run these after `docker compose up --build`
+and before any demo:
+
+```bash
+# 1) All three services healthy?
+docker compose ps                                       # backend / console / frontend up
+docker compose logs backend  --tail 80                  # no ImportError / no traceback
+docker compose logs console  --tail 40                  # Fortran sim loaded
+docker compose logs frontend --tail 20                  # nginx serving
+
+# 2) Base FastAPI surface reachable?
+curl -fsS http://localhost:8000/                        # 200
+curl -fsS http://localhost:8000/api/agent/models        # JSON
+curl -fsS http://localhost:5173/                        # frontend HTML
+
+# 3) Post-MVP endpoints reachable inside Docker?
+curl -fsS http://localhost:8000/.well-known/agent-card.json  | head -5
+curl -fsS -X POST http://localhost:8000/a2a \
+  -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","id":"smoke","method":"message/send",
+       "params":{"skill":"review_advisory_policy",
+                 "message":{"role":"user","parts":[{"text":"open valve"}]}}}'
+
+# 4) LangGraph orchestrator runs end-to-end inside the backend image?
+docker compose exec backend python backend/langgraph_rca.py --fault fault1 \
+  --question "Smoke test inside Docker."
+
+# 5a) NAT toolkit is installed in the image (import check, no LLM)?
+docker compose exec backend python -c "import nat" 2>&1                # primary check
+# 5b) Deterministic tool-chain works (explicit fallback mode, no LLM call)?
+docker compose exec backend python backend/nat_runner.py --fault fault1 --tools-only
+# 5c) Real NAT path works end-to-end (LLM call, this is the `Diagnose Now` flow)?
+docker compose exec backend python backend/nat_runner.py --fault fault1 \
+  --question "Smoke: diagnose the current TEP anomaly."
+
+# 6) RAG markdown actually shipped into the image?
+docker compose exec backend ls RAG/converted_markdown/                # 6 .md files
+docker compose exec backend python -c "
+from backend.agent_tools.knowledge_tools import search_process_knowledge
+r = search_process_knowledge('reactor cooling water', max_results=2)
+print('hits:', len(r.get('excerpts', [])))                            # must be > 0
+"
+```
+
+Steps 1-2 check the base service surface. Step 3 must return the agent
+card JSON and a JSON-RPC `Task` envelope. Step 4 must visit all 5 graph
+nodes (~10–40 s with LLM). Step 5 has three sub-checks for the NAT path
+(`nvidia-nat[langchain]` is the heaviest single package and the one that
+powers `Diagnose Now`): **5a** verifies the import alone; **5b** runs the
+deterministic tool-chain (`--tools-only` is an *explicit* fallback mode
+selected by that CLI flag — not what NAT does on failure); **5c** invokes
+the real NAT LLM path end-to-end. If 5a passes but 5c fails, the toolkit
+is installed but `NVIDIA_API_KEY` is missing or the workflow YAML is
+mis-wired. If 5a fails, the NAT package didn't make it into the image and
+the real `Diagnose Now` button will return an "NAT unavailable" error
+rather than producing an agent trace. Step 6 verifies the RAG markdown
+actually made it into the image (the `*.md` ignore rule has caught us
+once already). If any step fails, see the troubleshooting notes below
+the Tool surface section.
 
 #### Get an API key (free)
 

@@ -75,14 +75,14 @@
   .compare > div { background: var(--soft); padding: 14px 16px; border-radius: 6px; }
   .compare h4 { margin: 0 0 8px; font-size: 0.95rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
   .compare ul { margin: 0; padding-left: 1.1rem; }
-  .interview {
+  .takeaway {
     border: 1px dashed var(--border);
     background: #fff;
     padding: 16px 20px;
     border-radius: 6px;
     margin: 24px 0;
   }
-  .interview h3 { margin-top: 0; }
+  .takeaway h3 { margin-top: 0; }
   .pill {
     display: inline-block;
     background: var(--soft);
@@ -201,10 +201,10 @@
 The agent cannot change setpoints, open or close valves, start, stop, or trip equipment, or certify operating safety. <code>check_advisory_policy</code> enforces those rules in code; the workflow YAML restates them in natural language; the runner appends a constant <code>safety_notice</code> on every output.
 </div>
 
-<h2>7. What I would say in an interview</h2>
-<div class="interview">
+<h2>7. Leadership takeaway</h2>
+<div class="takeaway">
   <h3>The honest framing</h3>
-  <p>I started from a fixed industrial RAG demo because that was the clearest way to help customers and executives understand the layers: simulation, anomaly detection, retrieval, and LLM explanation. Then I upgraded the diagnosis layer into a NeMo Agent Toolkit workflow. The agent does not control the process. It chooses read-only diagnostic tools, gathers evidence, checks its advisory against safety language, and produces a traceable RCA for human review. The value is not the LLM - it is making industrial AI understandable, testable, and governable.</p>
+  <p>The project starts from a fixed industrial RAG demo because that is a clear way to explain the layers: simulation, anomaly detection, retrieval, and LLM explanation. The diagnosis layer is then upgraded into a NeMo Agent Toolkit workflow. The agent does not control the process. It chooses read-only diagnostic tools, gathers evidence, checks its advisory against safety language, and produces a traceable RCA for human review. The value is not the LLM - it is making industrial AI understandable, testable, and governable.</p>
 </div>
 
 <h2>8. What this is not</h2>
