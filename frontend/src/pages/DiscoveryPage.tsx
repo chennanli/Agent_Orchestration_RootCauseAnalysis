@@ -23,12 +23,13 @@ import {
   Loader,
 } from "@mantine/core";
 import { IconPlayerPlayFilled, IconRefresh } from "@tabler/icons-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import DiscoveryGraphPipeline from "../components/DiscoveryGraphPipeline";
 import EvaluatorVerdictPanel from "../components/EvaluatorVerdictPanel";
 import EvidenceByLayerPanel from "../components/EvidenceByLayerPanel";
 import HypothesisRanking from "../components/HypothesisRanking";
 import { useDiscoveryStream } from "../hooks/useDiscoveryStream";
+import type { DiscoveryStateSnapshot } from "../api/discovery";
 
 const FAULT_OPTIONS = [
   { value: "fault1", label: "fault1 — A/C feed ratio variation" },
@@ -51,6 +52,41 @@ export default function DiscoveryPage() {
   const stream = useDiscoveryStream();
   const [faultId, setFaultId] = useState("fault1");
   const isRunning = stream.phase === "submitting" || stream.phase === "streaming";
+
+  // `?replay=<url>` hydrates the page from a previously captured run JSON
+  // (no SSE, no LLM call). Useful for sharing a finished investigation as a
+  // link, for rendering doc screenshots from `docs/sample_runs/*.json`, and
+  // for offline review when the orchestrator isn't running.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const replayUrl = params.get("replay");
+    if (!replayUrl) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch(replayUrl);
+        if (!r.ok) {
+          console.error(`replay: HTTP ${r.status} for ${replayUrl}`);
+          return;
+        }
+        const snapshot = (await r.json()) as DiscoveryStateSnapshot & {
+          fault_id?: string;
+          _runtime_seconds?: number;
+        };
+        if (cancelled) return;
+        const replayFault = snapshot.fault_id ?? "fault1";
+        setFaultId(replayFault);
+        stream.loadSnapshot(snapshot, replayFault);
+      } catch (exc) {
+        console.error("replay: fetch/parse failed", exc);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // We intentionally run this only once on mount; loadSnapshot is stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <Stack gap="md" pb="xl">

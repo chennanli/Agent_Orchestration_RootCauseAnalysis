@@ -148,5 +148,39 @@ export function useDiscoveryStream() {
     setState(INITIAL);
   }, [closeStream]);
 
-  return { ...state, start, reset, canonicalNodes: DISCOVERY_NODES };
+  // Hydrate the hook from a saved-run final-state snapshot (no SSE, no LLM).
+  // Used by the `?replay=<url>` query-param path on /discovery so an operator
+  // (or a doc screenshot) can render a previously captured run without
+  // re-invoking the orchestrator.
+  const loadSnapshot = useCallback(
+    (
+      snapshot: DiscoveryStateSnapshot & { _runtime_seconds?: number },
+      faultId?: string,
+    ) => {
+      closeStream();
+      setState({
+        ...INITIAL,
+        phase: "done",
+        faultId: faultId ?? null,
+        state: snapshot,
+        // Mark every canonical node as completed since this is a finished run.
+        nodesCompleted: [...DISCOVERY_NODES],
+        activeNode: null,
+        durationSec:
+          typeof snapshot._runtime_seconds === "number"
+            ? snapshot._runtime_seconds
+            : null,
+        startedAt: null,
+      });
+    },
+    [closeStream],
+  );
+
+  return {
+    ...state,
+    start,
+    reset,
+    loadSnapshot,
+    canonicalNodes: DISCOVERY_NODES,
+  };
 }

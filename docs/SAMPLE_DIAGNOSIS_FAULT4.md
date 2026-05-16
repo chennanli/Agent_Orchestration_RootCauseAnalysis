@@ -5,6 +5,12 @@ state machine) against `fault4.csv` from the canonical Tennessee Eastman
 Process IDV catalog. Captured live, no edits.
 
 - **Source JSON:** [`sample_runs/lg_run_fault4_sample.json`](sample_runs/lg_run_fault4_sample.json)
+- **Replay in the live React UI** (no LLM / no NIM key needed):
+  `cd frontend && npm run dev`, then open
+  `http://127.0.0.1:5173/discovery?replay=/sample_runs/lg_run_fault4_sample.json`.
+  The page hydrates from this JSON via the `?replay=<url>` query-param
+  flag (`useDiscoveryStream.loadSnapshot`). The screenshot in `README.md`
+  is the rendered result of exactly this URL.
 - **Pipeline:** Signal → Evidence → Hypothesis → Evaluator → Human Review
 - **Generator LLM:** `meta/llama-3.3-70b-instruct` via NVIDIA NIM. The
   output *shape* (3 ranked hypotheses + evaluator verdict + advisory) is
