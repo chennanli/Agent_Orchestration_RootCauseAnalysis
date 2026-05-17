@@ -26,6 +26,10 @@
 
 ---
 
+> 📖 **Long-form write-up:** [From industrial RAG to a bounded LLM agent — a root-cause-analysis workbench](https://chennanli.github.io/posts/04-tep-agentic-rca-workbench/) — design rationale, the academic baseline this builds on (Prof. Can Li's FaultExplainer, [arXiv:2412.14492](https://arxiv.org/abs/2412.14492)), the three changes I made on top of it, and the bounded LangGraph workflow that followed.
+
+---
+
 ## What this is
 
 ### About the Tennessee Eastman Process
